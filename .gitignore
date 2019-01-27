@@ -1,6 +1,12 @@
 # Prerequisites
 *.d
 
+# Mac OS X files
+*.DS_Store
+
+# ctag files
+.tags
+
 # Compiled Object files
 *.slo
 *.lo
@@ -30,3 +36,69 @@
 *.exe
 *.out
 *.app
+
+# Editors
+.vscode
+.idea/
+
+# Build
+cmake_install.cmake
+CMakeCache.txt
+Makefile
+build/*
+CMakeFiles/*
+CMakeFiles
+xcode/*
+CMakeLists\.txt\.user
+cmake-build-*/
+/*.sln
+/*.xcodeproj
+/Makefile
+*.target.xml
+*.exe.config
+CTestTestfile.cmake
+CMakeScripts
+Testing
+install_manifest.txt
+compile_commands.json
+
+# coverage results
+coverage
+build/coverage
+
+# Build 3dparty
+build-iwyu/
+build-g3log/
+abseil/
+
+compile_commands\.json
+
+include-what-you-use
+
+# Ignore Unix backup files
+*~
+
+# Ignore vscode
+
+# Ignore build artifacts
+bin
+build
+out
+
+# Test results
+Testing/
+
+# Ignore intermediate folders
+intermediate/
+
+# Ignore any saved local files
+saved/
+
+# Explcitly ignore Mac DS_Store files, regardless of where they are
+.DS_Store
+
+# Ignore thirdparty folders
+thirdparty/
+
+# log
+*.log
