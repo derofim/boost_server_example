@@ -44,6 +44,9 @@ macro(set_test_compile_options target)
               >
           )
 
+  target_compile_definitions( ${target} PRIVATE
+    ${BOOST_DEFINITIONS} )
+
   # @see https://github.com/eranpeer/FakeIt
   target_compile_options( ${target} PRIVATE
     # If you don't use /ZI, you will have exceptions mocking destructors (which includes unique_ptr and other smart pointers).

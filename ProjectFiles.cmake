@@ -3,16 +3,14 @@
 # See accompanying file LICENSE.md or copy at http://opensource.org/licenses/MIT
 
 ## Search source files in folders
-# addFolder( ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME} "" ) # add main.cpp manually
-# addFolder( ${CMAKE_CURRENT_SOURCE_DIR}/src ${PROJECT_NAME} "" )
-#addFolder( ${CMAKE_CURRENT_SOURCE_DIR}/src/storage ${PROJECT_NAME} "" )
-#addFolder( ${CMAKE_CURRENT_SOURCE_DIR}/src/config ${PROJECT_NAME} "" )
-#addFolder( ${CMAKE_CURRENT_SOURCE_DIR}/src/lua ${PROJECT_NAME} "" )
-#addFolder( ${CMAKE_CURRENT_SOURCE_DIR}/src/log ${PROJECT_NAME} "" )
-#addFolder( ${CMAKE_CURRENT_SOURCE_DIR}/src/net ${PROJECT_NAME} "" )
-#addFolder( ${CMAKE_CURRENT_SOURCE_DIR}/src/algo ${PROJECT_NAME} "" )
-#addFolder( ${CMAKE_CURRENT_SOURCE_DIR}/src/net/webrtc ${PROJECT_NAME} "" )
-#addFolder( ${CMAKE_CURRENT_SOURCE_DIR}/src/net/websockets ${PROJECT_NAME} "" )
+#addFolder( ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_NAME} "" ) # add main.cpp manually
+#addFolder( ${CMAKE_CURRENT_SOURCE_DIR}/src ${PROJECT_NAME} "" ) # add main.cpp manually
+addFolder( ${CMAKE_CURRENT_SOURCE_DIR}/src/storage ${PROJECT_NAME} "" )
+addFolder( ${CMAKE_CURRENT_SOURCE_DIR}/src/config ${PROJECT_NAME} "" )
+addFolder( ${CMAKE_CURRENT_SOURCE_DIR}/src/log ${PROJECT_NAME} "" )
+addFolder( ${CMAKE_CURRENT_SOURCE_DIR}/src/net ${PROJECT_NAME} "" )
+addFolder( ${CMAKE_CURRENT_SOURCE_DIR}/src/algo ${PROJECT_NAME} "" )
+addFolder( ${CMAKE_CURRENT_SOURCE_DIR}/src/net/websockets ${PROJECT_NAME} "" )
 
 set_vs_startup_project(${PROJECT_NAME}) # from Utils.cmake
 
@@ -33,7 +31,7 @@ set(${PROJECT_NAME}_OTHER_IDE_FILES_EXTRA
   ".gitignore")
 addFolder( ${CMAKE_CURRENT_SOURCE_DIR} "${PROJECT_NAME}_OTHER_IDE_FILES" "cmake/*.cmake;cmake/*/*.*" )
 #addFolder( ${CMAKE_CURRENT_SOURCE_DIR} "${PROJECT_NAME}_OTHER_IDE_FILES" "assets/*.*;assets/*/*.*" )
-#addFolder( ${CMAKE_CURRENT_SOURCE_DIR} "${PROJECT_NAME}_OTHER_IDE_FILES" "client/*.*;client/*/*.*" )
+addFolder( ${CMAKE_CURRENT_SOURCE_DIR} "${PROJECT_NAME}_OTHER_IDE_FILES" "client/*.*;client/*/*.*" )
 addFolder( ${CMAKE_CURRENT_SOURCE_DIR} "${PROJECT_NAME}_OTHER_IDE_FILES" "docs/*.*;docs/*/*.*" )
 addFolder( ${CMAKE_CURRENT_SOURCE_DIR} "${PROJECT_NAME}_OTHER_IDE_FILES" "scripts/*.sh;scripts/*/*.sh" )
 addFolder( ${CMAKE_CURRENT_SOURCE_DIR} "${PROJECT_NAME}_OTHER_IDE_FILES" "*.md;*.yml;*.json;*.cmake;*.in;*.txt;*.py" )

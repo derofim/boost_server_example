@@ -5,6 +5,7 @@
 set( BOOST_VERSION 1.69.0 )
 
 # If you have built boost statically you will need to set the Boost_USE_STATIC_LIBS CMake variable to ON
+# also don`t forget to set DBOOST_LOG_DYN_LINK https://stackoverflow.com/a/17868918/10904212
 # set( Boost_USE_STATIC_LIBS FALSE )
 # set( Boost_USE_STATIC_RUNTIME FALSE )
 # set( Boost_USE_MULTITHREADED TRUE )
@@ -13,7 +14,7 @@ set( Boost_ADDITIONAL_VERSIONS "${BOOST_VERSION}" )
 set( BOOST_LIBS CACHE STRING ${BOOST_ROOT}/lib )
 # set( Boost_COMPILER "-gcc" )
 findPackageCrossPlatform( Boost 1.69.0
-  COMPONENTS program_options filesystem regex date_time system thread graph
+  COMPONENTS program_options filesystem regex date_time system thread graph log
   EXACT REQUIRED )
 
 findPackageCrossPlatform( Threads REQUIRED )

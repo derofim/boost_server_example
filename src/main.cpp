@@ -1,9 +1,15 @@
 /*
- * Copyright (c) 2019 Denis Trofimov (den.a.trofimov@yandex.ru)
+ * Copyright (c) 2018 Denis Trofimov (den.a.trofimov@yandex.ru)
  * Distributed under the MIT License.
  * See accompanying file LICENSE.md or copy at http://opensource.org/licenses/MIT
  */
 
+#include "config/ServerConfig.hpp"
+#include "log/Logger.hpp"
+#include "net/NetworkManager.hpp"
+#include "net/websockets/WsServer.hpp"
+#include "net/websockets/WsSession.hpp"
+#include "storage/path.hpp"
 #include <chrono>
 #include <cstdlib>
 #include <filesystem>
@@ -13,192 +19,149 @@
 #include <thread>
 #include <vector>
 
-#include <algorithm>
-#include <boost/asio/bind_executor.hpp>
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/strand.hpp>
-#include <boost/beast/core.hpp>
-#include <boost/beast/websocket.hpp>
-#include <cstdlib>
-#include <functional>
-#include <iostream>
-#include <memory>
-#include <string>
-#include <thread>
-#include <vector>
-
 namespace fs = std::filesystem; // from <filesystem>
 
 using namespace std::chrono_literals;
 
-namespace beast = boost::beast;         // from <boost/beast.hpp>
-namespace http = beast::http;           // from <boost/beast/http.hpp>
-namespace websocket = beast::websocket; // from <boost/beast/websocket.hpp>
-namespace net = boost::asio;            // from <boost/asio.hpp>
-using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
-
-//------------------------------------------------------------------------------
-
-// Report a failure
-void fail(beast::error_code ec, char const* what) {
-  std::cerr << what << ": " << ec.message() << "\n";
-}
-
-// Echoes back all received WebSocket messages
-class session : public std::enable_shared_from_this<session> {
-  websocket::stream<tcp::socket> ws_;
-  net::strand<net::io_context::executor_type> strand_;
-  beast::multi_buffer buffer_;
-
+class TickHandler {
 public:
-  // Take ownership of the socket
-  explicit session(tcp::socket socket) : ws_(std::move(socket)), strand_(ws_.get_executor()) {}
-
-  // Start the asynchronous operation
-  void run() {
-    // Accept the websocket handshake
-    ws_.async_accept(net::bind_executor(
-        strand_, std::bind(&session::on_accept, shared_from_this(), std::placeholders::_1)));
-  }
-
-  void on_accept(beast::error_code ec) {
-    if (ec)
-      return fail(ec, "accept");
-
-    // Read a message
-    do_read();
-  }
-
-  void do_read() {
-    // Read a message into our buffer
-    ws_.async_read(buffer_, net::bind_executor(
-                                strand_, std::bind(&session::on_read, shared_from_this(),
-                                                   std::placeholders::_1, std::placeholders::_2)));
-  }
-
-  void on_read(beast::error_code ec, std::size_t bytes_transferred) {
-    boost::ignore_unused(bytes_transferred);
-
-    // This indicates that the session was closed
-    if (ec == websocket::error::closed)
-      return;
-
-    if (ec)
-      fail(ec, "read");
-
-    // Echo the message
-    ws_.text(ws_.got_text());
-    ws_.async_write(
-        buffer_.data(),
-        net::bind_executor(strand_, std::bind(&session::on_write, shared_from_this(),
-                                              std::placeholders::_1, std::placeholders::_2)));
-  }
-
-  void on_write(beast::error_code ec, std::size_t bytes_transferred) {
-    boost::ignore_unused(bytes_transferred);
-
-    if (ec)
-      return fail(ec, "write");
-
-    // Clear the buffer
-    buffer_.consume(buffer_.size());
-
-    // Do another read
-    do_read();
-  }
+  TickHandler(const std::string& id, std::function<void()> fn) : id_(id), fn_(fn) {}
+  const std::string id_;
+  const std::function<void()> fn_;
 };
 
-//------------------------------------------------------------------------------
-
-// Accepts incoming connections and launches the sessions
-class listener : public std::enable_shared_from_this<listener> {
-  tcp::acceptor acceptor_;
-  tcp::socket socket_;
-
+template <typename PeriodType> class TickManager {
 public:
-  listener(net::io_context& ioc, tcp::endpoint endpoint) : acceptor_(ioc), socket_(ioc) {
-    beast::error_code ec;
+  TickManager(const PeriodType& serverNetworkUpdatePeriod)
+      : serverNetworkUpdatePeriod_(serverNetworkUpdatePeriod) {}
 
-    // Open the acceptor
-    acceptor_.open(endpoint.protocol(), ec);
-    if (ec) {
-      fail(ec, "open");
-      return;
-    }
-
-    // Allow address reuse
-    acceptor_.set_option(net::socket_base::reuse_address(true), ec);
-    if (ec) {
-      fail(ec, "set_option");
-      return;
-    }
-
-    // Bind to the server address
-    acceptor_.bind(endpoint, ec);
-    if (ec) {
-      fail(ec, "bind");
-      return;
-    }
-
-    // Start listening for connections
-    acceptor_.listen(net::socket_base::max_listen_connections, ec);
-    if (ec) {
-      fail(ec, "listen");
-      return;
+  void tick() {
+    std::this_thread::sleep_for(serverNetworkUpdatePeriod_);
+    for (const TickHandler& it : tickHandlers_) {
+      // LOG(INFO) << "tick() for " << it.id_;
+      it.fn_();
     }
   }
 
-  // Start accepting incoming connections
-  void run() {
-    if (!acceptor_.is_open())
-      return;
-    do_accept();
-  }
+  bool needServerRun() const { return needServerRun_; }
 
-  void do_accept() {
-    acceptor_.async_accept(
-        socket_, std::bind(&listener::on_accept, shared_from_this(), std::placeholders::_1));
-  }
+  void stop() { needServerRun_ = false; }
 
-  void on_accept(beast::error_code ec) {
-    if (ec) {
-      fail(ec, "accept");
-    } else {
-      // Create the session and run it
-      std::make_shared<session>(std::move(socket_))->run();
-    }
+  void addTickHandler(const TickHandler& tickHandler) { tickHandlers_.push_back(tickHandler); }
 
-    // Accept another connection
-    do_accept();
-  }
+  std::vector<TickHandler> getTickHandlers() const { return tickHandlers_; }
+
+private:
+  PeriodType serverNetworkUpdatePeriod_;
+
+  std::vector<TickHandler> tickHandlers_;
+
+  bool needServerRun_ = true;
 };
-
-//------------------------------------------------------------------------------
 
 int main(int argc, char* argv[]) {
-  // Check command line arguments.
-  if (argc != 4) {
-    std::cerr << "Usage: websocket-server-async <address> <port> <threads>\n"
-              << "Example:\n"
-              << "    websocket-server-async 0.0.0.0 8080 1\n";
-    return EXIT_FAILURE;
+
+  size_t WRTCTickFreq = 100; // 1/Freq
+  size_t WRTCTickNum = 0;
+
+  size_t WSTickFreq = 100; // 1/Freq
+  size_t WSTickNum = 0;
+
+  boostander::log::Logger::instance(); // inits Logger
+
+  {
+    unsigned int c = std::thread::hardware_concurrency();
+    LOG(INFO) << "Number of cores: " << c;
+    const size_t minCores = 4;
+    if (c < minCores) {
+      LOG(INFO) << "Too low number of cores! Prefer servers with at least " << minCores << " cores";
+    }
   }
-  auto const address = net::ip::make_address(argv[1]);
-  auto const port = static_cast<unsigned short>(std::atoi(argv[2]));
-  auto const threads = std::max<int>(1, std::atoi(argv[3]));
 
-  // The io_context is required for all I/O
-  net::io_context ioc{threads};
+  const fs::path workdir = boostander::storage::getThisBinaryDirectoryPath();
 
-  // Create and launch a listening port
-  std::make_shared<listener>(ioc, tcp::endpoint{address, port})->run();
+  // TODO: support async file read, use futures or std::async
+  // NOTE: future/promise Should Not Be Coupled to std::thread Execution Agents
+  const boostander::config::ServerConfig serverConfig(
+      fs::path{workdir / boostander::config::ASSETS_DIR / boostander::config::CONFIGS_DIR /
+               boostander::config::CONFIG_NAME},
+      workdir);
 
-  // Run the I/O service on the requested number of threads
-  std::vector<std::thread> v;
-  v.reserve(threads - 1);
-  for (auto i = threads - 1; i > 0; --i)
-    v.emplace_back([&ioc] { ioc.run(); });
-  ioc.run();
+  auto nm = std::make_shared<boostander::net::NetworkManager>(serverConfig);
+
+  // TODO: print active sessions
+
+  // TODO: destroy inactive wrtc sessions (by timer)
+
+  nm->run(serverConfig);
+
+  LOG(INFO) << "Starting server loop for event queue";
+
+  // processRecievedMsgs
+  TickManager<std::chrono::milliseconds> tm(50ms);
+
+  tm.addTickHandler(TickHandler("handleAllPlayerMessages", [&nm]() {
+    // TODO: merge responses for same Player (NOTE: packet size limited!)
+
+    // TODO: move game logic to separete thread or service
+
+    // Handle queued incoming messages
+    nm->handleIncomingMessages();
+  }));
+
+  {
+    tm.addTickHandler(TickHandler("WSTick", [&nm, &WSTickFreq, &WSTickNum]() {
+      WSTickNum++;
+      if (WSTickNum < WSTickFreq) {
+        return;
+      } else {
+        WSTickNum = 0;
+      }
+      LOG(WARNING) << "WSTick! " << nm->getWS()->getSessionsCount();
+      // send test data to all players
+      std::chrono::system_clock::time_point nowTp = std::chrono::system_clock::now();
+      std::time_t t = std::chrono::system_clock::to_time_t(nowTp);
+      std::string msg = "WS server_time: ";
+      msg += std::ctime(&t);
+      msg += ";Total WS connections:";
+      msg += std::to_string(nm->getWS()->getSessionsCount());
+      const std::unordered_map<std::string, std::shared_ptr<boostander::net::WsSession>>& sessions =
+          nm->getWS()->getSessions();
+      msg += ";SESSIONS:[";
+      for (auto& it : sessions) {
+        std::shared_ptr<boostander::net::WsSession> wss = it.second;
+        msg += it.first;
+        msg += "=";
+        if (!wss || !wss.get()) {
+          msg += "EMPTY";
+        } else {
+          msg += wss->getId();
+        }
+      }
+      msg += "]SESSIONS";
+
+      nm->getWS()->sendToAll(msg);
+      nm->getWS()->doToAllSessions(
+          [&](const std::string& sessId, std::shared_ptr<boostander::net::WsSession> session) {
+            if (!session || !session.get()) {
+              LOG(WARNING) << "WSTick: Invalid WsSession ";
+              return;
+            }
+            session->send("Your WS id: " + session->getId());
+          });
+    }));
+  }
+
+  while (tm.needServerRun()) {
+    tm.tick();
+  }
+
+  // TODO: sendProcessedMsgs in separate thread
+
+  // (If we get here, it means we got a SIGINT or SIGTERM)
+  LOG(WARNING) << "If we get here, it means we got a SIGINT or SIGTERM";
+
+  nm->finish();
 
   return EXIT_SUCCESS;
 }

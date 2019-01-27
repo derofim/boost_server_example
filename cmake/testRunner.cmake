@@ -16,7 +16,7 @@ macro(add_test_command_targets target)
         --target ${target}
         --config $<CONFIG>
       COMMAND ${CMAKE_COMMAND} -E echo ----------------------------------
-      #DEPENDS ${target} gloer
+      #DEPENDS ${target} boostander
   )
 
   # Run tests with verbose output
@@ -33,7 +33,7 @@ macro(add_test_command_targets target)
           --parallel ${NUM_PROCESSORS}
           #--test-action test
       COMMAND ${CMAKE_COMMAND} -E echo ----------------------------------
-      #DEPENDS ${target} gloer
+      #DEPENDS ${target} boostander
   )
 
   list(APPEND ALL_TESTS_LIST ${target})
@@ -47,6 +47,6 @@ macro(add_test_autostarter target)
   add_custom_command(TARGET ${target}
     POST_BUILD
     COMMAND  ${CMAKE_COMMAND} --build . --target ${target}_check_verbose --config $<CONFIG>
-    #DEPENDS ${target} gloer
+    #DEPENDS ${target} boostander
   )
 endmacro()

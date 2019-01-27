@@ -3,7 +3,7 @@ cmake_minimum_required( VERSION 3.13.3 FATAL_ERROR )
 
 set( PROJECT_NAME "boostander" )
 set( PROJECT_TARGET_EXE "boostander" )
-set( PROJECT_DESCRIPTION "boostander: C++17 server" )
+set( PROJECT_DESCRIPTION "boostander: C++17 boost.beast server" )
 
 set( ROOT_PROJECT_NAME ${PROJECT_NAME} CACHE INTERNAL "ROOT_PROJECT_NAME" )
 set( ${PROJECT_NAME}_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "${PROJECT_NAME}_PROJECT_DIR" )
@@ -58,6 +58,8 @@ target_include_directories( ${PROJECT_TARGET_EXE} SYSTEM PRIVATE
 set_source_files_properties( ${OTHER_FILES} PROPERTIES
   HEADER_FILE_ONLY TRUE )
 
+set(BOOST_DEFINITIONS "-DBOOST_LOG_DYN_LINK" CACHE INTERNAL "" FORCE)
+
 set( USED_BOOST_LIBS
   Boost::boost
   Boost::atomic
@@ -65,6 +67,9 @@ set( USED_BOOST_LIBS
   Boost::date_time
   Boost::filesystem
   Boost::graph
+  Boost::log
+  Boost::program_options
+  Boost::regex
   Boost::regex
   Boost::system
   Boost::thread
@@ -86,6 +91,9 @@ set( USED_3DPARTY_LIBS
   # boost libs
   ${USED_BOOST_LIBS}
   CACHE INTERNAL "USED_3DPARTY_LIBS" )
+
+target_compile_definitions( ${PROJECT_TARGET_EXE} PRIVATE
+  ${BOOST_DEFINITIONS} )
 
 set_target_properties( ${PROJECT_TARGET_EXE} PROPERTIES
   OUTPUT_NAME ${PROJECT_NAME}
