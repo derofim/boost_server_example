@@ -87,6 +87,12 @@ void WsListener::do_accept() {
       socket_, std::bind(&WsListener::on_accept, shared_from_this(), std::placeholders::_1));
 }
 
+std::shared_ptr<WsSession> WsListener::addClientSession(const std::string& newSessId) {
+  auto newWsSession = std::make_shared<WsSession>(std::move(socket_), nm_, newSessId);
+  nm_->getWS()->addSession(newSessId, newWsSession);
+  return newWsSession;
+}
+
 /**
  * @brief handles new connections and starts sessions
  */

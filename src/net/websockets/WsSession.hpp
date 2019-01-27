@@ -17,6 +17,12 @@ class DispatchQueue;
 namespace boostander {
 namespace net {
 
+namespace beast = boost::beast;         // from <boost/beast.hpp>
+namespace http = beast::http;           // from <boost/beast/http.hpp>
+namespace websocket = beast::websocket; // from <boost/beast/websocket.hpp>
+namespace net = boost::asio;            // from <boost/asio.hpp>
+using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
+
 // NOTE: ProducerConsumerQueue must be created with a fixed maximum size
 // We use Queue per connection, so it is for 1 client
 constexpr size_t maxSendQueueElems = 16;
@@ -72,6 +78,15 @@ public:
 
   bool fullyCreated() const { return isFullyCreated_; }
 
+  void connectAsClient(const std::string& host, const std::string& port,
+                       tcp::endpoint::protocol_type protocol_type);
+
+  void onResolve(beast::error_code ec, tcp::resolver::results_type results);
+
+  void onConnect(beast::error_code ec);
+
+  void onHandshake(beast::error_code ec);
+
 private:
   bool isFullyCreated_{false};
 
@@ -95,6 +110,8 @@ private:
    * performed within a strand.
    */
   boost::asio::strand<boost::asio::io_context::executor_type> strand_;
+
+  boost::asio::ip::tcp::resolver resolver_;
 
   boost::beast::multi_buffer recievedBuffer_;
 

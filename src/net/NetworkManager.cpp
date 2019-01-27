@@ -26,8 +26,8 @@ NetworkManager::NetworkManager(const boostander::config::ServerConfig& serverCon
 std::shared_ptr<WSServer> NetworkManager::getWS() const { return wsServer_; }
 
 void NetworkManager::handleIncomingMessages() {
-  if (!wsServer_->iocWsListener_->isAccepting()) {
-    LOG(WARNING) << "iocWsListener_ not accepting incoming messages";
+  if (!wsServer_->getWsListener()->isAccepting()) {
+    LOG(WARNING) << "WsListener not accepting incoming messages";
   }
   wsServer_->handleIncomingMessages();
 }

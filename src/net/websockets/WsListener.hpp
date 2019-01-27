@@ -27,6 +27,7 @@ namespace boostander {
 namespace net {
 
 class NetworkManager;
+class WsSession;
 
 /**
  * Accepts incoming connections and launches the sessions
@@ -57,9 +58,12 @@ public:
    */
   void on_accept(boost::beast::error_code ec);
 
+  boost::asio::ip::tcp::socket socket_;
+
+  std::shared_ptr<WsSession> addClientSession(const std::string& newSessId);
+
 private:
   boost::asio::ip::tcp::acceptor acceptor_;
-  boost::asio::ip::tcp::socket socket_;
   std::shared_ptr<std::string const> doc_root_;
   NetworkManager* nm_;
   boost::asio::ip::tcp::endpoint endpoint_;

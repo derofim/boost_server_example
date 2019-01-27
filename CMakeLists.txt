@@ -147,3 +147,5 @@ option(BUILD_TESTS "Enable tests" ON)
 if(BUILD_TESTS)
   add_subdirectory( tests )
 endif()
+
+add_subdirectory( client )

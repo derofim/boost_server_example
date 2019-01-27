@@ -8,6 +8,7 @@
 #include "config/ServerConfig.hpp"
 #include "log/Logger.hpp"
 #include "net/NetworkManager.hpp"
+#include "net/websockets/WsListener.hpp"
 #include "net/websockets/WsServer.hpp"
 #include "net/websockets/WsSession.hpp"
 #include "storage/path.hpp"
@@ -35,6 +36,7 @@ static void printNumOfCores() {
 
 int main(int argc, char* argv[]) {
   using namespace boostander::algo;
+  using namespace boostander::net;
 
   size_t WRTCTickFreq = 100; // 1/Freq
   size_t WRTCTickNum = 0;
@@ -50,10 +52,12 @@ int main(int argc, char* argv[]) {
 
   // TODO: support async file read, use futures or std::async
   // NOTE: future/promise Should Not Be Coupled to std::thread Execution Agents
-  const boostander::config::ServerConfig serverConfig(
+  boostander::config::ServerConfig serverConfig(
       fs::path{workdir / boostander::config::ASSETS_DIR / boostander::config::CONFIGS_DIR /
                boostander::config::CONFIG_NAME},
       workdir);
+
+  serverConfig.wsPort_ = static_cast<unsigned short>(8082); // TODO
 
   auto nm = std::make_shared<boostander::net::NetworkManager>(serverConfig);
 
@@ -68,13 +72,30 @@ int main(int argc, char* argv[]) {
   // process recieved messages with some period
   TickManager<std::chrono::milliseconds> tm(50ms);
 
-  tm.addTickHandler(TickHandler("handleAllPlayerMessages", [&nm]() {
+  // Create the session and run it
+  const auto newSessId = "anyIdHere";
+  // boost::asio::ip::tcp::socket& socket_ = nm->getWS()->getWsListener()->socket_;
+  /*auto newWsSession =
+      std::make_shared<WsSession>(std::move(nm->getWS()->getWsListener()->socket_), nm, newSessId);
+  nm->getWS()->addSession(newSessId, newWsSession);*/
+  auto newWsSession = nm->getWS()->getWsListener()->addClientSession(newSessId);
+  newWsSession->connectAsClient("127.0.0.1", "8080", tcp::endpoint::protocol_type::tcp::v6());
+  std::string welcomeMsg = "welcome, ";
+  welcomeMsg += newSessId;
+  LOG(INFO) << "new ws session " << newSessId;
+  newWsSession->send(std::make_shared<std::string>(welcomeMsg)); // NOTE: need wait connected state
+
+  tm.addTickHandler(TickHandler("handleAllPlayerMessages", [&nm, &newSessId, &newWsSession]() {
     // TODO: merge responses for same Player (NOTE: packet size limited!)
 
     // TODO: move game logic to separete thread or service
 
     // Handle queued incoming messages
     nm->handleIncomingMessages();
+    LOG(INFO) << "new ws session " << newSessId;
+    std::string periodicMsg = "0welcome, ";
+    periodicMsg += newSessId;
+    newWsSession->send(std::make_shared<std::string>(periodicMsg));
   }));
 
   {
@@ -108,7 +129,7 @@ int main(int argc, char* argv[]) {
       }
       msg += "]SESSIONS";
 
-      nm->getWS()->sendToAll(msg);
+      /*nm->getWS()->sendToAll(msg);
       nm->getWS()->doToAllSessions(
           [&](const std::string& sessId, std::shared_ptr<boostander::net::WsSession> session) {
             if (!session || !session.get()) {
@@ -116,7 +137,7 @@ int main(int argc, char* argv[]) {
               return;
             }
             session->send("Your WS id: " + session->getId());
-          });
+          });*/
     }));
   }
 

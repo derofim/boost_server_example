@@ -141,7 +141,7 @@ void WSServer::sendTo(const std::string& sessionID, const std::string& message) 
 }
 
 void WSServer::handleIncomingMessages() {
-  LOG(INFO) << "WSServer::handleIncomingMessages getSessionsCount " << getSessionsCount();
+  // LOG(INFO) << "WSServer::handleIncomingMessages getSessionsCount " << getSessionsCount();
   doToAllSessions([&](const std::string& sessId, std::shared_ptr<WsSession> session) {
     if (!session || !session.get()) {
       LOG(WARNING) << "WsServer::handleAllPlayerMessages: trying to "

@@ -1,7 +1,7 @@
 
 cmake_minimum_required( VERSION 3.13.3 FATAL_ERROR )
 
-set( PROJECT_NAME "${ROOT_PROJECT_NAME}-tests" )
+set( TESTS_PROJECT_NAME "${ROOT_PROJECT_NAME}_tests" )
 
 # Get CMAKE_MODULE_PATH from parent project
 list(APPEND CMAKE_MODULE_PATH "${${ROOT_PROJECT_NAME}_CMAKE_MODULE_PATH}")
@@ -115,7 +115,7 @@ option(AUTORUN_TESTS "Autorun tests" OFF) # see add_test_autostarter
 
 option(BUILD_TESTS "Enable tests" ON)
 if(BUILD_TESTS)
-  message( "${PROJECT_NAME} testing enabled" )
+  message( "${TESTS_PROJECT_NAME} testing enabled" )
 
   set ( server_deps
     server.test.cpp
@@ -170,7 +170,7 @@ if (ENABLE_CODE_COVERAGE)
     check_all
     coverage # Name of output directory.
     )
-  message("added make code coverage for ${PROJECT_NAME}_coverage")
+  message("added make code coverage for ${TESTS_PROJECT_NAME}_coverage")
 else()
   message(WARNING "code coverage off")
 endif()

@@ -89,16 +89,18 @@ public:
 
   void runIocWsListener(const config::ServerConfig& serverConfig);
 
-  std::shared_ptr<WsListener> iocWsListener_;
+  std::shared_ptr<WsListener> getWsListener() const { return iocWsListener_; }
+
+  // The io_context is required for all I/O
+  boost::asio::io_context ioc_;
 
 private:
+  std::shared_ptr<WsListener> iocWsListener_;
+
   // Run the I/O service on the requested number of threads
   std::vector<std::thread> wsThreads_;
 
   NetworkManager* nm_;
-
-  // The io_context is required for all I/O
-  boost::asio::io_context ioc_;
 };
 
 } // namespace net
