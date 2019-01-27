@@ -44,7 +44,7 @@ public:
   ~WsSession();
 
   // Start the asynchronous operation
-  void run();
+  void runAsServer();
 
   void on_session_fail(boost::beast::error_code ec, char const* what);
 
@@ -88,6 +88,8 @@ public:
   void onHandshake(beast::error_code ec);
 
   bool waitForConnect(std::size_t max_wait_ms) const;
+
+  void runAsClient();
 
 private:
   bool isFullyCreated_{false};

@@ -77,30 +77,73 @@ void WsListener::configureAcceptor() {
 // Start accepting incoming connections
 void WsListener::run() {
   LOG(INFO) << "WS run";
-  if (!isAccepting())
+  if (!isAccepting() || needClose_) {
+    LOG(INFO) << "WsListener::run: not accepting";
     return;
+  }
   do_accept();
 }
 
 // Stop accepting incoming connections
 void WsListener::stop() {
   LOG(INFO) << "WS stop";
-  if (!isAccepting())
-    return;
-  // TODO: Without strand https://github.com/boostorg/beast/issues/940
-  // With strand
-  boost::asio::post(socket_.get_executor(),
-                    boost::asio::bind_executor(strand_, [&]() { socket_.cancel(); }));
+  /**
+   * @see https://github.com/boostorg/beast/issues/940
+   * Calls to cancel() will always fail with boost::asio::error::operation_not_supported when run on
+   * Windows XP, Windows Server 2003, and earlier versions of Windows, unless
+   * BOOST_ASIO_ENABLE_CANCELIO is defined. However, the CancelIo function has two issues
+   * https://www.boost.org/doc/libs/1_47_0/doc/html/boost_asio/reference/basic_stream_socket/cancel/overload1.html
+   **/
+  boost::asio::post(socket_.get_executor(), boost::asio::bind_executor(strand_, [&]() {
+                      LOG(INFO) << "closing socket...";
+                      try {
+                        // acceptor_.cancel();
+                        // socket_.cancel();
+                        beast::error_code ec;
+                        // For portable behaviour with respect to graceful closure of a connected
+                        // socket, call shutdown() before closing the socket.
+                        if (socket_.is_open()) {
+                          socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+                          LOG(INFO) << "shutdown socket...";
+                          if (ec) {
+                            on_WsListener_fail(ec, "socket_shutdown");
+                          }
+                          socket_.close(ec);
+                          LOG(INFO) << "close socket...";
+                          if (ec) {
+                            on_WsListener_fail(ec, "socket_close");
+                          }
+                        }
+                        if (acceptor_.is_open()) {
+                          LOG(INFO) << "close acceptor...";
+                          acceptor_.close(ec);
+                          if (ec) {
+                            on_WsListener_fail(ec, "acceptor_close");
+                          }
+                        }
+                        needClose_ = true;
+                      } catch (const boost::system::system_error& ex) {
+                        LOG(WARNING) << "WsListener::stop: exception: " << ex.what();
+                      }
+                    }));
 }
 
 void WsListener::do_accept() {
   LOG(INFO) << "WS do_accept";
+  if (needClose_) {
+    LOG(WARNING) << "WsListener::do_accept: need close";
+    return;
+  }
   acceptor_.async_accept(socket_, boost::asio::bind_executor(
                                       strand_, std::bind(&WsListener::on_accept, shared_from_this(),
                                                          std::placeholders::_1)));
 }
 
 std::shared_ptr<WsSession> WsListener::addClientSession(const std::string& newSessId) {
+  if (needClose_) {
+    LOG(INFO) << "WsListener::addClientSession: need close";
+    return nullptr;
+  }
   auto newWsSession = std::make_shared<WsSession>(std::move(socket_), nm_, newSessId);
   nm_->getWS()->addSession(newSessId, newWsSession);
   return newWsSession;
@@ -111,6 +154,12 @@ std::shared_ptr<WsSession> WsListener::addClientSession(const std::string& newSe
  */
 void WsListener::on_accept(beast::error_code ec) {
   LOG(INFO) << "WS on_accept";
+
+  if (!isAccepting() || !socket_.is_open() || needClose_) {
+    LOG(WARNING) << "WsListener::on_accept: not accepting";
+    return;
+  }
+
   if (ec) {
     on_WsListener_fail(ec, "accept");
   } else {
@@ -118,7 +167,7 @@ void WsListener::on_accept(beast::error_code ec) {
     const auto newSessId = nextWsSessionId();
     auto newWsSession = std::make_shared<WsSession>(std::move(socket_), nm_, newSessId);
     nm_->getWS()->addSession(newSessId, newWsSession);
-    newWsSession->run();
+    newWsSession->runAsServer();
     std::string welcomeMsg = "welcome, ";
     welcomeMsg += newSessId;
     LOG(INFO) << "new ws session " << newSessId;

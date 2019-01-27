@@ -23,6 +23,10 @@ DispatchQueue::~DispatchQueue() {
   // Signal to dispatch threads that it's time to wrap up
   std::unique_lock<std::mutex> lock(lock_);
   quit_ = true;
+
+  /*while (!callbacksQueue_.empty())
+    callbacksQueue_.pop();*/
+
   lock.unlock();
   cv_.notify_all();
 
@@ -80,6 +84,13 @@ void DispatchQueue::dispatch_loop(void) {
   } while (!quit_);
 
   lock.unlock();
+}
+
+void DispatchQueue::clear() {
+  std::unique_lock<std::mutex> lock(lock_);
+
+  while (!callbacksQueue_.empty())
+    callbacksQueue_.pop();
 }
 
 void DispatchQueue::DispatchQueued(void) {

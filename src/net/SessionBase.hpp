@@ -10,13 +10,13 @@ namespace boostander {
 namespace config {
 class ServerConfig;
 } // namespace config
-} // namespace utils
+} // namespace boostander
 
 namespace boostander {
 namespace algo {
 class DispatchQueue;
 } // namespace algo
-} // namespace utils
+} // namespace boostander
 
 namespace boostander {
 namespace net {
@@ -39,6 +39,8 @@ public:
 
   virtual bool hasReceivedMessages() const;
 
+  virtual void clearReceivedMessages() const;
+
 protected:
   const std::string id_;
 
@@ -46,4 +48,4 @@ protected:
 };
 
 } // namespace net
-} // namespace utils
+} // namespace boostander

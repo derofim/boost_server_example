@@ -79,6 +79,8 @@ private:
    * performed within a strand.
    */
   boost::asio::strand<boost::asio::io_context::executor_type> strand_;
+
+  bool needClose_ = false;
 };
 
 } // namespace net

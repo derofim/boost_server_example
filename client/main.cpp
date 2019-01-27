@@ -56,7 +56,9 @@ int main() {
                boostander::config::CONFIG_NAME},
       workdir);
 
-  serverConfig.wsPort_ = static_cast<unsigned short>(8082); // TODO
+  // NOTE Tell the socket to bind to port 0, then query the socket for the actual port it bound to
+  // if successful.
+  serverConfig.wsPort_ = static_cast<unsigned short>(0);
 
   auto nm = std::make_shared<boostander::net::NetworkManager>(serverConfig);
 
@@ -72,29 +74,37 @@ int main() {
   TickManager<std::chrono::milliseconds> tm(50ms);
 
   // Create the session and run it
-  const auto newSessId = "anyIdHere";
+  const auto newSessId = "clientSideServerId";
   // boost::asio::ip::tcp::socket& socket_ = nm->getWS()->getWsListener()->socket_;
   /*auto newWsSession =
       std::make_shared<WsSession>(std::move(nm->getWS()->getWsListener()->socket_), nm, newSessId);
   nm->getWS()->addSession(newSessId, newWsSession);*/
   auto newWsSession = nm->getWS()->getWsListener()->addClientSession(newSessId);
+  if (!newWsSession || !newWsSession.get()) {
+    LOG(WARNING) << "addClientSession failed ";
+    nm->finish();
+    LOG(WARNING) << "exiting...";
+    return EXIT_SUCCESS;
+  }
 
   const std::string hostToConnect = "127.0.0.1";
   const std::string portToConnect = "8080";
   newWsSession->connectAsClient(hostToConnect, portToConnect,
                                 tcp::endpoint::protocol_type::tcp::v6());
-  std::string welcomeMsg = "welcome, ";
-  welcomeMsg += newSessId;
-  LOG(INFO) << "new ws session " << newSessId;
-  newWsSession->send(std::make_shared<std::string>(welcomeMsg)); // NOTE: need wait connected state
 
   bool isConnected = newWsSession->waitForConnect(/* maxWait_ms */ 1000);
   if (!isConnected) {
     LOG(WARNING) << "waitForConnect: Can`t connect to " << hostToConnect << ":" << portToConnect;
     nm->finish();
-    LOG(WARNING) << "EXIT_FAILURE";
+    LOG(WARNING) << "exiting...";
     return EXIT_SUCCESS;
   }
+  newWsSession->runAsClient();
+
+  std::string welcomeMsg = "welcome, ";
+  welcomeMsg += newSessId;
+  LOG(INFO) << "1111new ws session " << newSessId;
+  newWsSession->send(std::make_shared<std::string>(welcomeMsg)); // NOTE: need wait connected state
 
   tm.addTickHandler(TickHandler("handleAllPlayerMessages", [&nm, &newSessId, &newWsSession]() {
     // TODO: merge responses for same Player (NOTE: packet size limited!)

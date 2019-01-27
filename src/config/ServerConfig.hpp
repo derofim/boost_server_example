@@ -31,6 +31,7 @@ struct ServerConfig {
   boost::asio::ip::address address_;
 
   // port for WebSockets connection
+  // 0 is for random port
   unsigned short wsPort_;
 
   int32_t threads_;

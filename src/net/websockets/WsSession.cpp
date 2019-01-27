@@ -80,7 +80,8 @@ WsSession::~WsSession() {
   if (receivedMessagesQueue_ && receivedMessagesQueue_.get())
     receivedMessagesQueue_.reset();
   // sendQueue_.
-  nm_->getWS()->unregisterSession(id_);
+  /*if (nm_ && nm_->getWS() && nm_->getWS().get())
+    nm_->getWS()->unregisterSession(id_);*/
 }
 
 bool WsSession::waitForConnect(std::size_t maxWait_ms) const {
@@ -138,13 +139,36 @@ void WsSession::onHandshake(beast::error_code ec) {
   if (ec)
     return on_session_fail(ec, "handshake");
 
+  // run();
   // Send the message
   /*ws_.async_write(net::buffer(text_), std::bind(&session::on_write, shared_from_this(),
                                                 std::placeholders::_1, std::placeholders::_2));*/
 }
 
+void WsSession::runAsClient() {
+  LOG(INFO) << "WS session run as client";
+
+  // Set the control callback. This will be called
+  // on every incoming ping, pong, and close frame.
+  ws_.control_callback(
+      boost::asio::bind_executor(strand_, std::bind(&WsSession::on_control_callback, this,
+                                                    std::placeholders::_1, std::placeholders::_2)));
+
+  // Run the timer. The timer is operated
+  // continuously, this simplifies the code.
+  on_timer({});
+
+  // Set the timer
+  timer_.expires_after(std::chrono::seconds(WS_PING_FREQUENCY_SEC));
+
+  isFullyCreated_ = true; // TODO
+
+  // Read a message
+  do_read();
+}
+
 // Start the asynchronous operation
-void WsSession::run() {
+void WsSession::runAsServer() {
   LOG(INFO) << "WS session run";
 
   /*if (!isOpen()) {
@@ -367,6 +391,11 @@ void WsSession::on_read(beast::error_code ec, std::size_t bytes_transferred) {
   // Clear the buffer
   recievedBuffer_.consume(recievedBuffer_.size());
 
+  if (!isOpen()) {
+    LOG(WARNING) << "WsSession::on_read: !ws_.is_open()";
+    return;
+  }
+
   // Do another read
   do_read();
 }
@@ -412,7 +441,7 @@ bool WsSession::handleIncomingData(std::shared_ptr<std::string> message) {
     /*LOG(WARNING) << "WsSession::handleIncomingData: receivedMessagesQueue_->sizeGuess() "
                  << receivedMessagesQueue_->sizeGuess();*/
   } else {
-    LOG(WARNING) << "WsSession::handleIncomingData: ignored invalid message " << message
+    LOG(WARNING) << "WsSession::handleIncomingData: ignored invalid message " << message->c_str()
                  << " with type " << typeStr;
     return false;
   }
@@ -436,7 +465,7 @@ void WsSession::on_write(beast::error_code ec, std::size_t bytes_transferred) {
   }
 
   if (!isOpen()) {
-    LOG(WARNING) << "!ws_.is_open()";
+    LOG(WARNING) << "WsSession::on_write: !ws_.is_open()";
     return;
   }
 
@@ -507,7 +536,7 @@ void WsSession::send(const std::string& ss) {
   }*/
 
   if (!isOpen()) {
-    LOG(WARNING) << "!ws_.is_open()";
+    LOG(WARNING) << "WsSession::send: !ws_.is_open()";
     return;
   }
 

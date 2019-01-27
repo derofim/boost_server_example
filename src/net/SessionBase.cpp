@@ -38,5 +38,13 @@ bool SessionBase::hasReceivedMessages() const {
   return receivedMessagesQueue_->isEmpty();
 }
 
+void SessionBase::clearReceivedMessages() const {
+  if (!receivedMessagesQueue_ && receivedMessagesQueue_.get()) {
+    LOG(WARNING) << "WsSession::hasReceivedMessages invalid receivedMessagesQueue_";
+    return;
+  }
+  receivedMessagesQueue_->clear();
+}
+
 } // namespace net
 } // namespace boostander

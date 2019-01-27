@@ -47,6 +47,8 @@ public:
 
   void DispatchQueued(void);
 
+  void clear();
+
   bool isEmpty() {
     std::scoped_lock<std::mutex> lock(lock_);
     return threads_.empty();
