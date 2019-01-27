@@ -52,8 +52,9 @@ endmacro()
 
 set ( CLIENT_SOURCE_LIST
   ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
-  ${${ROOT_PROJECT_NAME}_SRCS} # all source files  of root project without main.cpp
-  ${THIRDPARTY_SOURCES})
+  #${${ROOT_PROJECT_NAME}_SRCS} # all source files  of root project without main.cpp
+  #${THIRDPARTY_SOURCES}
+  )
 
 #message(FATAL_ERROR ${CLIENT_SOURCE_LIST})
 add_executable(${CLIENT_PROJECT_NAME} ${CLIENT_SOURCE_LIST})
@@ -70,6 +71,8 @@ target_link_libraries(${CLIENT_PROJECT_NAME} PRIVATE
   ${USED_3DPARTY_LIBS}
   # system libs
   ${USED_SYSTEM_LIBS}
+  # main project lib
+  ${ROOT_PROJECT_NAME}_lib
 )
 
 target_include_directories( ${CLIENT_PROJECT_NAME} SYSTEM PRIVATE

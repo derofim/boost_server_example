@@ -62,11 +62,23 @@ public:
 
   std::shared_ptr<WsSession> addClientSession(const std::string& newSessId);
 
+  void stop();
+
 private:
   boost::asio::ip::tcp::acceptor acceptor_;
+
   std::shared_ptr<std::string const> doc_root_;
+
   NetworkManager* nm_;
+
   boost::asio::ip::tcp::endpoint endpoint_;
+
+  /**
+   * I/O objects such as sockets and streams are not thread-safe. For efficiency, networking adopts
+   * a model of using threads without explicit locking by requiring all access to I/O objects to be
+   * performed within a strand.
+   */
+  boost::asio::strand<boost::asio::io_context::executor_type> strand_;
 };
 
 } // namespace net

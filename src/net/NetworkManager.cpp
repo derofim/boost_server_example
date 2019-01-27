@@ -61,7 +61,10 @@ void NetworkManager::run(const boostander::config::ServerConfig& serverConfig) {
   wsServer_->runThreads(serverConfig);
 }
 
-void NetworkManager::finish() { wsServer_->finishThreads(); }
+void NetworkManager::finish() {
+  wsServer_->getWsListener()->stop();
+  wsServer_->finishThreads();
+}
 
 } // namespace net
 } // namespace boostander

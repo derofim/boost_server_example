@@ -87,6 +87,8 @@ public:
 
   void onHandshake(beast::error_code ec);
 
+  bool waitForConnect(std::size_t max_wait_ms) const;
+
 private:
   bool isFullyCreated_{false};
 

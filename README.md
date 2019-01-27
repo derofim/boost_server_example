@@ -9,6 +9,7 @@ Linux (tested on Ubuntu 18.04 LTS)
 # Features
 
 * Asynchronous implementation
+* Both client and server in single WebSocket session API
 * Multithreaded
 * Uses Boost 1.69.0
 * Uses Catch2 & FakeIt for unit tests

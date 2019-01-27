@@ -32,7 +32,8 @@ static std::string nextWsSessionId() { return boostander::algo::genGuid(); }
 
 WsListener::WsListener(boost::asio::io_context& ioc, const boost::asio::ip::tcp::endpoint& endpoint,
                        std::shared_ptr<std::string const> doc_root, NetworkManager* nm)
-    : acceptor_(ioc), socket_(ioc), doc_root_(doc_root), nm_(nm), endpoint_(endpoint) {
+    : acceptor_(ioc), socket_(ioc), doc_root_(doc_root), nm_(nm), endpoint_(endpoint),
+      strand_(ioc.get_executor()) {
   configureAcceptor();
 }
 
@@ -81,10 +82,22 @@ void WsListener::run() {
   do_accept();
 }
 
+// Stop accepting incoming connections
+void WsListener::stop() {
+  LOG(INFO) << "WS stop";
+  if (!isAccepting())
+    return;
+  // TODO: Without strand https://github.com/boostorg/beast/issues/940
+  // With strand
+  boost::asio::post(socket_.get_executor(),
+                    boost::asio::bind_executor(strand_, [&]() { socket_.cancel(); }));
+}
+
 void WsListener::do_accept() {
   LOG(INFO) << "WS do_accept";
-  acceptor_.async_accept(
-      socket_, std::bind(&WsListener::on_accept, shared_from_this(), std::placeholders::_1));
+  acceptor_.async_accept(socket_, boost::asio::bind_executor(
+                                      strand_, std::bind(&WsListener::on_accept, shared_from_this(),
+                                                         std::placeholders::_1)));
 }
 
 std::shared_ptr<WsSession> WsListener::addClientSession(const std::string& newSessId) {

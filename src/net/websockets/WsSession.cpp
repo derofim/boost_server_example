@@ -40,13 +40,6 @@ namespace websocket = beast::websocket; // from <boost/beast/websocket.hpp>
 namespace net = boost::asio;            // from <boost/asio.hpp>
 using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 
-void WsSession::on_session_fail(beast::error_code ec, char const* what) {
-  LOG(WARNING) << "WsSession: " << what << " : " << ec.message();
-  // const std::string wsGuid = boost::lexical_cast<std::string>(getId());
-  std::string copyId = getId();
-  nm_->getWS()->unregisterSession(copyId);
-}
-
 // @note tcp::socket socket represents the local end of a connection between two peers
 WsSession::WsSession(tcp::socket socket, NetworkManager* nm, const std::string& id)
     : SessionBase(id), ws_(std::move(socket)), strand_(ws_.get_executor()), nm_(nm),
@@ -82,6 +75,31 @@ WsSession::WsSession(tcp::socket socket, NetworkManager* nm, const std::string& 
   LOG(INFO) << "created WsSession #" << id_;
 }
 
+WsSession::~WsSession() {
+  LOG(INFO) << "~WsSession";
+  if (receivedMessagesQueue_ && receivedMessagesQueue_.get())
+    receivedMessagesQueue_.reset();
+  // sendQueue_.
+  nm_->getWS()->unregisterSession(id_);
+}
+
+bool WsSession::waitForConnect(std::size_t maxWait_ms) const {
+  auto end_time = std::chrono::high_resolution_clock::now() + std::chrono::milliseconds(maxWait_ms);
+  auto current_time = std::chrono::high_resolution_clock::now();
+  while (!isOpen() && (current_time < end_time)) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    current_time = std::chrono::high_resolution_clock::now();
+  }
+  return isOpen();
+}
+
+void WsSession::on_session_fail(beast::error_code ec, char const* what) {
+  LOG(WARNING) << "WsSession: " << what << " : " << ec.message();
+  // const std::string wsGuid = boost::lexical_cast<std::string>(getId());
+  std::string copyId = getId();
+  nm_->getWS()->unregisterSession(copyId);
+}
+
 void WsSession::connectAsClient(const std::string& host, const std::string& port,
                                 tcp::endpoint::protocol_type protocol_type) {
 
@@ -109,7 +127,7 @@ void WsSession::onConnect(beast::error_code ec) {
 
   // Perform the websocket handshake
   auto host = ws_.lowest_layer().local_endpoint().address().to_string();
-  LOG(WARNING) << "onConnect: connected to " << host;
+  // LOG(WARNING) << "onConnect: connected to " << host;
   ws_.async_handshake(
       host, host,
       boost::asio::bind_executor(
@@ -123,14 +141,6 @@ void WsSession::onHandshake(beast::error_code ec) {
   // Send the message
   /*ws_.async_write(net::buffer(text_), std::bind(&session::on_write, shared_from_this(),
                                                 std::placeholders::_1, std::placeholders::_2));*/
-}
-
-WsSession::~WsSession() {
-  LOG(INFO) << "~WsSession";
-  if (receivedMessagesQueue_ && receivedMessagesQueue_.get())
-    receivedMessagesQueue_.reset();
-  // sendQueue_.
-  nm_->getWS()->unregisterSession(id_);
 }
 
 // Start the asynchronous operation
@@ -454,7 +464,7 @@ void WsSession::on_write(beast::error_code ec, std::size_t bytes_transferred) {
         net::bind_executor(strand_, std::bind(&WsSession::on_write, shared_from_this(),
                                               std::placeholders::_1, std::placeholders::_2)));
   } else {
-    LOG(INFO) << "write send_queue_.empty()";
+    // LOG(INFO) << "write send_queue_.empty()";
     isSendBusy_ = false;
   }
 }

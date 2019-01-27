@@ -31,7 +31,25 @@ include( Dependencies.cmake )
 
 include( ProjectFiles.cmake )
 
-add_executable( ${PROJECT_TARGET_EXE} )
+add_library( ${PROJECT_NAME}_lib OBJECT
+  ${SOURCE_FILES}
+  ${${PROJECT_NAME}_OTHER_IDE_FILES_EXTRA}
+  )
+
+target_include_directories( ${PROJECT_NAME}_lib PUBLIC "src/" )
+
+target_include_directories( ${PROJECT_NAME}_lib SYSTEM PUBLIC
+  ${THIRDPARTY_FILES} ) # from ProjectFiles.cmake
+
+set(BOOST_DEFINITIONS "-DBOOST_LOG_DYN_LINK" CACHE INTERNAL "" FORCE)
+target_compile_definitions( ${PROJECT_NAME}_lib PUBLIC
+  ${BOOST_DEFINITIONS} )
+
+add_executable( ${PROJECT_TARGET_EXE} ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp )
+
+target_include_directories( ${PROJECT_TARGET_EXE} PUBLIC "src/" )
+
+target_link_libraries(${PROJECT_TARGET_EXE} PRIVATE ${PROJECT_NAME}_lib)
 
 # IWYU detects superfluous includes and when the include can be replaced with a forward declaration.
 # It can be obtained using "apt-get install iwyu" or from "github.com/include-what-you-use".
@@ -46,19 +64,8 @@ else()
   message(WARNING "iwyu turned off")
 endif()
 
-target_sources( ${PROJECT_TARGET_EXE} PRIVATE
-  ${SOURCE_FILES}
-  ${${PROJECT_NAME}_OTHER_IDE_FILES_EXTRA} )
-
-target_include_directories( ${PROJECT_TARGET_EXE} PRIVATE "src/" )
-
-target_include_directories( ${PROJECT_TARGET_EXE} SYSTEM PRIVATE
-  ${THIRDPARTY_FILES} ) # from ProjectFiles.cmake
-
 set_source_files_properties( ${OTHER_FILES} PROPERTIES
   HEADER_FILE_ONLY TRUE )
-
-set(BOOST_DEFINITIONS "-DBOOST_LOG_DYN_LINK" CACHE INTERNAL "" FORCE)
 
 set( USED_BOOST_LIBS
   Boost::boost
@@ -92,8 +99,13 @@ set( USED_3DPARTY_LIBS
   ${USED_BOOST_LIBS}
   CACHE INTERNAL "USED_3DPARTY_LIBS" )
 
-target_compile_definitions( ${PROJECT_TARGET_EXE} PRIVATE
-  ${BOOST_DEFINITIONS} )
+set_target_properties( ${PROJECT_NAME}_lib PROPERTIES
+  OUTPUT_NAME ${PROJECT_NAME}
+  CXX_STANDARD 17
+  CXX_EXTENSIONS OFF
+  CMAKE_CXX_STANDARD_REQUIRED ON
+  CMAKE_CXX_FLAGS "-fno-rtti /std:c++latest"
+  RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/${PROJECT_NAME}_lib )
 
 set_target_properties( ${PROJECT_TARGET_EXE} PROPERTIES
   OUTPUT_NAME ${PROJECT_NAME}
@@ -106,7 +118,7 @@ set_target_properties( ${PROJECT_TARGET_EXE} PROPERTIES
 # @see https://stackoverflow.com/a/46132078/10904212
 message( "CMAKE_CXX_COMPILER_ID=${CMAKE_CXX_COMPILER_ID}" )
 if( UNIX OR MINGW )
-  target_compile_options( ${PROJECT_TARGET_EXE} PRIVATE
+  target_compile_options( ${PROJECT_NAME}_lib PRIVATE
    "$<$<CONFIG:RELEASE>:-Werror>"
     -Wall
     -Wextra
@@ -118,7 +130,7 @@ if( UNIX OR MINGW )
     )
   message( "detected compiler: UNIX OR MINGW" )
 elseif(CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang|AppleClang" )
-  target_compile_options( ${PROJECT_TARGET_EXE} PRIVATE
+  target_compile_options( ${PROJECT_NAME}_lib PRIVATE
     "$<$<CONFIG:RELEASE>:-Werror>"
     -Wall
     -Wextra
@@ -127,12 +139,12 @@ elseif(CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang|App
     )
   message( "detected compiler: Clang" )
 elseif( CMAKE_CXX_COMPILER_ID MATCHES "MSVC" )
-  target_compile_options( ${PROJECT_TARGET_EXE} PRIVATE /W4 /WX )
+  target_compile_options( ${PROJECT_NAME}_lib PRIVATE /W4 /WX )
 else()
   message( FATAL_ERROR "unsupported compiler" )
 endif()
 
-target_link_libraries( ${PROJECT_TARGET_EXE} PUBLIC
+target_link_libraries( ${PROJECT_NAME}_lib PUBLIC
   # 3dparty libs
   ${USED_3DPARTY_LIBS}
   # system libs

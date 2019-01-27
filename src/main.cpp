@@ -33,11 +33,10 @@ static void printNumOfCores() {
   }
 }
 
-int main(int argc, char* argv[]) {
-  using namespace boostander::algo;
+int main() {
+  LOG(INFO) << "Starting server..";
 
-  size_t WRTCTickFreq = 100; // 1/Freq
-  size_t WRTCTickNum = 0;
+  using namespace boostander::algo;
 
   size_t WSTickFreq = 100; // 1/Freq
   size_t WSTickNum = 0;

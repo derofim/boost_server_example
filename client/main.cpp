@@ -34,12 +34,11 @@ static void printNumOfCores() {
   }
 }
 
-int main(int argc, char* argv[]) {
+int main() {
+  LOG(INFO) << "Starting client..";
+
   using namespace boostander::algo;
   using namespace boostander::net;
-
-  size_t WRTCTickFreq = 100; // 1/Freq
-  size_t WRTCTickNum = 0;
 
   size_t WSTickFreq = 100; // 1/Freq
   size_t WSTickNum = 0;
@@ -79,11 +78,23 @@ int main(int argc, char* argv[]) {
       std::make_shared<WsSession>(std::move(nm->getWS()->getWsListener()->socket_), nm, newSessId);
   nm->getWS()->addSession(newSessId, newWsSession);*/
   auto newWsSession = nm->getWS()->getWsListener()->addClientSession(newSessId);
-  newWsSession->connectAsClient("127.0.0.1", "8080", tcp::endpoint::protocol_type::tcp::v6());
+
+  const std::string hostToConnect = "127.0.0.1";
+  const std::string portToConnect = "8080";
+  newWsSession->connectAsClient(hostToConnect, portToConnect,
+                                tcp::endpoint::protocol_type::tcp::v6());
   std::string welcomeMsg = "welcome, ";
   welcomeMsg += newSessId;
   LOG(INFO) << "new ws session " << newSessId;
   newWsSession->send(std::make_shared<std::string>(welcomeMsg)); // NOTE: need wait connected state
+
+  bool isConnected = newWsSession->waitForConnect(/* maxWait_ms */ 1000);
+  if (!isConnected) {
+    LOG(WARNING) << "waitForConnect: Can`t connect to " << hostToConnect << ":" << portToConnect;
+    nm->finish();
+    LOG(WARNING) << "EXIT_FAILURE";
+    return EXIT_SUCCESS;
+  }
 
   tm.addTickHandler(TickHandler("handleAllPlayerMessages", [&nm, &newSessId, &newWsSession]() {
     // TODO: merge responses for same Player (NOTE: packet size limited!)
@@ -92,7 +103,6 @@ int main(int argc, char* argv[]) {
 
     // Handle queued incoming messages
     nm->handleIncomingMessages();
-    LOG(INFO) << "new ws session " << newSessId;
     std::string periodicMsg = "0welcome, ";
     periodicMsg += newSessId;
     newWsSession->send(std::make_shared<std::string>(periodicMsg));

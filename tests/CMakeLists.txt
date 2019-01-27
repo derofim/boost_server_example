@@ -87,8 +87,8 @@ endmacro()
 
 add_library( test_main OBJECT
   main.cpp
-  ${${ROOT_PROJECT_NAME}_SRCS} # all source files  of root project without main.cpp
-  ${THIRDPARTY_SOURCES}
+  #${${ROOT_PROJECT_NAME}_SRCS} # all source files  of root project without main.cpp
+  #${THIRDPARTY_SOURCES}
   testsCommon.h # include in IDE
   )
 
@@ -102,6 +102,8 @@ target_link_libraries(test_main PUBLIC
   ${USED_3DPARTY_LIBS}
   # system libs
   ${USED_SYSTEM_LIBS}
+  # main project lib
+  ${ROOT_PROJECT_NAME}_lib
 )
 
 target_link_libraries( test_main PUBLIC
