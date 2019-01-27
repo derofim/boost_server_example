@@ -99,6 +99,7 @@ saved/
 
 # Ignore thirdparty folders
 thirdparty/
+submodules/
 
 # log
 *.log
