@@ -1,10 +1,7 @@
 ﻿#pragma once
 
-#include "log/Logger.hpp"
-#include <boost/asio.hpp>
 #include <memory>
-#include <thread>
-#include <vector>
+#include <string>
 
 namespace boostander {
 namespace config {

@@ -23,12 +23,6 @@ using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 
 ServerConfig::ServerConfig(const fs::path& workdir) : workdir_(workdir) { loadConf(); }
 
-ServerConfig::ServerConfig(const fs::path& configPath, const fs::path& workdir)
-    : workdir_(workdir) {
-
-  loadConf();
-}
-
 void ServerConfig::print() const {
   LOG(INFO) << "address: " << address_.to_string() << '\n'
             << "port: " << wsPort_ << '\n'

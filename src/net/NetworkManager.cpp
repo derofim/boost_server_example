@@ -21,7 +21,7 @@ namespace websocket = beast::websocket; // from <boost/beast/websocket.hpp>
 namespace net = boost::asio;            // from <boost/asio.hpp>
 using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 
-NetworkManager::NetworkManager(const boostander::config::ServerConfig& serverConfig) {}
+NetworkManager::NetworkManager() {}
 
 std::shared_ptr<WSServer> NetworkManager::getWS() const { return wsServer_; }
 
@@ -32,31 +32,11 @@ void NetworkManager::handleIncomingMessages() {
   wsServer_->handleIncomingMessages();
 }
 
-/*
- * TODO
-#include <csignal>
-/// Block until SIGINT or SIGTERM is received.
-void sigWait(net::io_context& ioc) {
-  // Capture SIGINT and SIGTERM to perform a clean shutdown
-  boost::asio::signal_set signals(ioc, SIGINT, SIGTERM);
-  signals.async_wait([&](boost::system::error_code const&, int) {
-    // Stop the `io_context`. This will cause `run()`
-    // to return immediately, eventually destroying the
-    // `io_context` and all of the sockets in it.
-    LOG(WARNING) << "Called ioc.stop() on SIGINT or SIGTERM";
-    ioc.stop();
-    doServerRun = false;
-  });
-}
-*/
-
 void NetworkManager::run(const boostander::config::ServerConfig& serverConfig) {
   // NOTE: no 'this' in constructor
   wsServer_ = std::make_shared<WSServer>(this, serverConfig);
 
   wsServer_->runIocWsListener(serverConfig);
-
-  // TODO int max_thread_num = std::thread::hardware_concurrency();
 
   wsServer_->runThreads(serverConfig);
 }

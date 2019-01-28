@@ -79,43 +79,26 @@ int main(int argc, char** argv) {
     }
   }
 
-  size_t WSTickFreq = 100; // 1/Freq
-  size_t WSTickNum = 0;
-
   printNumOfCores();
 
   const fs::path workdir = boostander::storage::getThisBinaryDirectoryPath();
 
   // TODO: support async file read, use futures or std::async
   // NOTE: future/promise Should Not Be Coupled to std::thread Execution Agents
-  boostander::config::ServerConfig serverConfig(
-      fs::path{workdir / boostander::config::ASSETS_DIR / boostander::config::CONFIGS_DIR /
-               boostander::config::CONFIG_NAME},
-      workdir);
+  boostander::config::ServerConfig serverConfig(workdir);
 
-  // NOTE Tell the socket to bind to port 0, then query the socket for the actual port it bound to
-  // if successful.
+  // NOTE Tell the socket to bind to port 0 - random port
   serverConfig.wsPort_ = static_cast<unsigned short>(0);
 
-  auto nm = std::make_shared<boostander::net::NetworkManager>(serverConfig);
-
-  // TODO: print active sessions
-
-  // TODO: destroy inactive wrtc sessions (by timer)
+  auto nm = std::make_shared<boostander::net::NetworkManager>();
 
   nm->run(serverConfig);
-
-  LOG(INFO) << "Starting server loop for event queue";
 
   // process recieved messages with some period
   TickManager<std::chrono::milliseconds> tm(50ms);
 
   // Create the session and run it
   const auto newSessId = "clientSideServerId";
-  // boost::asio::ip::tcp::socket& socket_ = nm->getWS()->getWsListener()->socket_;
-  /*auto newWsSession =
-      std::make_shared<WsSession>(std::move(nm->getWS()->getWsListener()->socket_), nm, newSessId);
-  nm->getWS()->addSession(newSessId, newWsSession);*/
   auto newWsSession = nm->getWS()->getWsListener()->addClientSession(newSessId);
   if (!newWsSession || !newWsSession.get()) {
     LOG(WARNING) << "addClientSession failed ";
@@ -126,8 +109,7 @@ int main(int argc, char** argv) {
 
   const std::string hostToConnect = "127.0.0.1";
   const std::string portToConnect = "8080";
-  newWsSession->connectAsClient(hostToConnect, portToConnect,
-                                tcp::endpoint::protocol_type::tcp::v6());
+  newWsSession->connectAsClient(hostToConnect, portToConnect);
 
   // NOTE: need wait connected state
   LOG(WARNING) << "connecting to " << hostToConnect << ":" << portToConnect << "...";
@@ -141,27 +123,17 @@ int main(int argc, char** argv) {
 
   newWsSession->runAsClient();
 
-  // const std::string msg = static_cast<char>(WS_OPCODE::CSV_ANALIZE) + csvContents;
   const std::string msg = Opcodes::opcodeToStr(WS_OPCODE::CSV_ANALIZE) + csvContents;
   newWsSession->send(std::make_shared<std::string>(msg));
 
   tm.addTickHandler(TickHandler("handleAllPlayerMessages", [&nm, &newSessId, &newWsSession]() {
-    // TODO: merge responses for same Player (NOTE: packet size limited!)
-
-    // TODO: move game logic to separete thread or service
-
     // Handle queued incoming messages
     nm->handleIncomingMessages();
-    /*std::string periodicMsg = "0welcome, ";
-    periodicMsg += newSessId;
-    newWsSession->send(std::make_shared<std::string>(periodicMsg));*/
   }));
 
   while (tm.needServerRun()) {
     tm.tick();
   }
-
-  // TODO: sendProcessedMsgs in separate thread
 
   // (If we get here, it means we got a SIGINT or SIGTERM)
   LOG(WARNING) << "If we get here, it means we got a SIGINT or SIGTERM";

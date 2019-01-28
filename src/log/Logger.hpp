@@ -1,14 +1,22 @@
 #pragma once
 
-#include <boost/log/sinks.hpp>
+#include <boost/log/sinks/async_frontend.hpp>
+#include <boost/log/sinks/sync_frontend.hpp>
+#include <boost/log/sinks/text_ostream_backend.hpp>
 #include <boost/log/sources/severity_logger.hpp>
 #include <boost/log/trivial.hpp>
-#include <boost/log/utility/formatting_ostream.hpp>
-#include <boost/smart_ptr/shared_ptr.hpp>
-#include <ios>
-#include <memory>
-#include <sstream>
+#include <boost/shared_ptr.hpp>
 #include <string>
+
+namespace boost {
+namespace log {
+namespace v2_mt_posix {
+namespace sinks {
+class syslog_backend;
+}
+} // namespace v2_mt_posix
+} // namespace log
+} // namespace boost
 
 #define LOG(lvl) BOOST_LOG_TRIVIAL(lvl)
 #define WARNING warning

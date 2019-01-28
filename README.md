@@ -12,6 +12,7 @@ Linux (tested on Ubuntu 18.04 LTS)
 * Both client and server in single WebSocket session API
 * Multithreaded
 * Uses Boost 1.69.0
+* Syslog support
 * Uses Catch2 & FakeIt for unit tests
 * Uses iwyu - A tool for use with clang to analyze #includes in C and C++ source files
 * Uses Boost.Beast

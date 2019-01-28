@@ -124,6 +124,10 @@ if( UNIX OR MINGW )
    "$<$<CONFIG:RELEASE>:-Werror>"
     -Wall
     -Wextra
+    -Wno-unused-variable
+    -Wno-unused-parameter
+    -Wno-deprecated
+    -Wno-reorder
     "$<$<CONFIG:RELEASE>:-Wpedantic>"
     "$<$<CONFIG:RELEASE>:-O3>"
     -fdiagnostics-color=always
@@ -136,6 +140,10 @@ elseif(CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang|App
     "$<$<CONFIG:RELEASE>:-Werror>"
     -Wall
     -Wextra
+    -Wno-unused-variable
+    -Wno-unused-parameter
+    -Wno-deprecated
+    -Wno-reorder
     "$<$<CONFIG:RELEASE>:-pedantic>"
     "$<$<CONFIG:RELEASE>:-O3>"
     )

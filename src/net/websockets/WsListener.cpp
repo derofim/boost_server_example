@@ -32,7 +32,7 @@ static std::string nextWsSessionId() { return boostander::algo::genGuid(); }
 
 WsListener::WsListener(boost::asio::io_context& ioc, const boost::asio::ip::tcp::endpoint& endpoint,
                        std::shared_ptr<std::string const> doc_root, NetworkManager* nm)
-    : acceptor_(ioc), socket_(ioc), doc_root_(doc_root), nm_(nm), endpoint_(endpoint),
+    : socket_(ioc), acceptor_(ioc), doc_root_(doc_root), nm_(nm), endpoint_(endpoint),
       strand_(ioc.get_executor()) {
   configureAcceptor();
 }
@@ -76,7 +76,6 @@ void WsListener::configureAcceptor() {
 
 // Start accepting incoming connections
 void WsListener::run() {
-  LOG(INFO) << "WS run";
   if (!isAccepting() || needClose_) {
     LOG(INFO) << "WsListener::run: not accepting";
     return;
@@ -86,7 +85,6 @@ void WsListener::run() {
 
 // Stop accepting incoming connections
 void WsListener::stop() {
-  LOG(INFO) << "WS stop";
   /**
    * @see https://github.com/boostorg/beast/issues/940
    * Calls to cancel() will always fail with boost::asio::error::operation_not_supported when run on
@@ -95,10 +93,7 @@ void WsListener::stop() {
    * https://www.boost.org/doc/libs/1_47_0/doc/html/boost_asio/reference/basic_stream_socket/cancel/overload1.html
    **/
   boost::asio::post(socket_.get_executor(), boost::asio::bind_executor(strand_, [&]() {
-                      LOG(INFO) << "closing socket...";
                       try {
-                        // acceptor_.cancel();
-                        // socket_.cancel();
                         beast::error_code ec;
                         // For portable behaviour with respect to graceful closure of a connected
                         // socket, call shutdown() before closing the socket.
@@ -129,7 +124,6 @@ void WsListener::stop() {
 }
 
 void WsListener::do_accept() {
-  LOG(INFO) << "WS do_accept";
   if (needClose_) {
     LOG(WARNING) << "WsListener::do_accept: need close";
     return;
@@ -153,7 +147,6 @@ std::shared_ptr<WsSession> WsListener::addClientSession(const std::string& newSe
  * @brief handles new connections and starts sessions
  */
 void WsListener::on_accept(beast::error_code ec) {
-  LOG(INFO) << "WS on_accept";
 
   if (!isAccepting() || !socket_.is_open() || needClose_) {
     LOG(WARNING) << "WsListener::on_accept: not accepting";
@@ -168,11 +161,6 @@ void WsListener::on_accept(beast::error_code ec) {
     auto newWsSession = std::make_shared<WsSession>(std::move(socket_), nm_, newSessId);
     nm_->getWS()->addSession(newSessId, newWsSession);
     newWsSession->runAsServer();
-    std::string welcomeMsg = "welcome, ";
-    welcomeMsg += newSessId;
-    LOG(INFO) << "new ws session " << newSessId;
-    // newWsSession->send(std::make_shared<std::string>(welcomeMsg));
-    ///////newWsSession->send(welcomeMsg);
   }
 
   // Accept another connection

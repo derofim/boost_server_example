@@ -11,7 +11,7 @@ std::string trim_whitespace(std::string const& str);
 std::string genGuid();
 
 // supported formatting: https://howardhinnant.github.io/date/date.html#to_stream_formatting
-std::string currentDateTime(const std::string& format = "%d.%m.%Y %H:%M:%S");
+std::string currentDateTime();
 
 // supported formatting: https://howardhinnant.github.io/date/date.html#to_stream_formatting
 std::chrono::system_clock::time_point

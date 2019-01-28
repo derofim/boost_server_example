@@ -55,10 +55,6 @@ static void pingCallback(WsSession* clientSession, NetworkManager* nm,
     return;
   }
 
-  /*const std::string payload = messageBuffer->substr(1, messageBuffer->size() - 1);
-  const std::string pingResponse = Opcodes::opcodeToStr(WS_OPCODE::PING) + payload;*/
-
-  // const std::string incomingStr = beast::buffers_to_string(messageBuffer->data());
   LOG(INFO) << std::this_thread::get_id() << ":"
             << "pingCallback incomingMsg=" << messageBuffer->substr(0, 50).c_str();
 
@@ -86,9 +82,6 @@ static void csvAnalizeCallback(WsSession* clientSession, NetworkManager* nm,
 
   const std::string payload = messageBuffer->substr(1, messageBuffer->size() - 1);
 
-  LOG(INFO) << std::this_thread::get_id() << ":"
-            << "testCSVCallback incomingMsg=" << messageBuffer->substr(0, 50).c_str();
-
   CSV csv;
   std::chrono::system_clock::time_point maxDate;
   double delim = 0.0;
@@ -98,7 +91,7 @@ static void csvAnalizeCallback(WsSession* clientSession, NetworkManager* nm,
       LOG(WARNING) << "csvAnalizeCallback: Provided invalid csv file\n"
                    << "See example .csv files in assets folder\n";
     }
-    for (int i = 0; i < csv.getRowsCount(); i++) {
+    for (unsigned int i = 0; i < csv.getRowsCount(); i++) {
       auto dt = dateTimeFromStr(csv.getAt(i, 0));
       if (dt > maxDate) {
         maxDate = dt;
@@ -111,7 +104,7 @@ static void csvAnalizeCallback(WsSession* clientSession, NetworkManager* nm,
     }
   }
 
-  LOG(WARNING) << "csvAnalizeCallback: maxDate = " << dateToStr(maxDate) << " delim = " << delim;
+  LOG(WARNING) << "max. date = " << dateToStr(maxDate) << "; a/b = " << delim;
 
   // send analize result
   const std::string CSVResponse =
@@ -135,16 +128,7 @@ static void csvAnswerCallback(WsSession* clientSession, NetworkManager* nm,
   }
 
   const std::string payload = messageBuffer->substr(1, messageBuffer->size() - 1);
-  LOG(WARNING) << "csvAnswerCallback: " << payload;
-
-  // const std::string CSVResponse = Opcodes::opcodeToStr(WS_OPCODE::CSV_ANSWER) + payload;
-
-  // const std::string incomingStr = beast::buffers_to_string(messageBuffer->data());
-  /*LOG(INFO) << std::this_thread::get_id() << ":"
-            << "testCSVCallback incomingMsg=" << messageBuffer->substr(0, 50).c_str();*/
-
-  // send same message back
-  // clientSession->send(messageBuffer);
+  LOG(WARNING) << "result: rows in csv  = " << payload;
 }
 
 } // namespace
@@ -164,8 +148,6 @@ void WSInputCallbacks::addCallback(const WsNetworkOperation& op,
                                    const WsNetworkOperationCallback& cb) {
   operationCallbacks_[op] = cb;
 }
-
-// TODO: add webrtc callbacks (similar to websockets)
 
 WSServer::WSServer(NetworkManager* nm, const boostander::config::ServerConfig& serverConfig)
     : nm_(nm), ioc_(serverConfig.threads_) {
@@ -208,7 +190,6 @@ void WSServer::unregisterSession(const std::string& id) {
       return;
     }
   }
-  LOG(WARNING) << "WsServer: unregistered " << idCopy;
 }
 
 /**
@@ -219,7 +200,6 @@ void WSServer::unregisterSession(const std::string& id) {
  * sm->sendToAll(msg);
  **/
 void WSServer::sendToAll(const std::string& message) {
-  LOG(WARNING) << "WSServer::sendToAll:" << message;
   {
     for (auto& sessionkv : getSessions()) {
       if (!sessionkv.second || !sessionkv.second.get()) {
@@ -248,22 +228,14 @@ void WSServer::sendTo(const std::string& sessionID, const std::string& message) 
 }
 
 void WSServer::handleIncomingMessages() {
-  // LOG(INFO) << "WSServer::handleIncomingMessages getSessionsCount " << getSessionsCount();
   doToAllSessions([&](const std::string& sessId, std::shared_ptr<WsSession> session) {
     if (!session || !session.get()) {
       LOG(WARNING) << "WsServer::handleAllPlayerMessages: trying to "
                       "use non-existing session";
-      // NOTE: unregisterSession must be automatic!
       unregisterSession(sessId);
       return;
     }
-    /*if (!session->isOpen() && session->fullyCreated()) {
-      LOG(WARNING) << "WsServer::handleAllPlayerMessages: !session->isOpen()";
-      // NOTE: unregisterSession must be automatic!
-      unregisterSession(session->getId());
-      return;
-    }*/
-    // LOG(INFO) << "doToAllSessions for " << session->getId();
+
     auto msgs = session->getReceivedMessages();
     if (!msgs || !msgs.get()) {
       LOG(WARNING) << "WsServer::handleAllPlayerMessages: invalid session->getReceivedMessages()";
@@ -278,8 +250,6 @@ void WSServer::runThreads(const config::ServerConfig& serverConfig) {
   for (auto i = serverConfig.threads_; i > 0; --i) {
     wsThreads_.emplace_back([this] { ioc_.run(); });
   }
-  // TODO sigWait(ioc);
-  // TODO ioc.run();
 }
 
 void WSServer::finishThreads() {

@@ -28,6 +28,8 @@ template <typename T> struct NetworkOperation {
       : operationCode_(operationCode), operationCodeStr_(Opcodes::opcodeToStr(operationCode)),
         operationName_("") {}
 
+  virtual ~NetworkOperation() {}
+
   bool operator<(const NetworkOperation& rhs) const { return operationCode_ < rhs.operationCode_; }
 
   const T operationCode_;

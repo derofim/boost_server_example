@@ -5,11 +5,9 @@
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/signal_set.hpp>
-#include <boost/asio/ssl/stream.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/beast/core.hpp>
-#include <boost/beast/experimental/core/ssl_stream.hpp>
 #include <boost/beast/http.hpp>
 #include <boost/beast/version.hpp>
 #include <boost/beast/websocket.hpp>
@@ -58,13 +56,13 @@ public:
    */
   void on_accept(boost::beast::error_code ec);
 
-  boost::asio::ip::tcp::socket socket_;
-
   std::shared_ptr<WsSession> addClientSession(const std::string& newSessId);
 
   void stop();
 
 private:
+  boost::asio::ip::tcp::socket socket_;
+
   boost::asio::ip::tcp::acceptor acceptor_;
 
   std::shared_ptr<std::string const> doc_root_;

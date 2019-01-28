@@ -34,7 +34,7 @@ boost::uuids::uuid genBoostGuid() {
 
 std::string genGuid() { return boost::lexical_cast<std::string>(genBoostGuid()); }
 
-std::string currentDateTime(const std::string& format) {
+std::string currentDateTime() {
   auto now = std::chrono::system_clock::now();
   return dateToStr(now);
 }

@@ -1,14 +1,15 @@
 ﻿#pragma once
 
 #include "log/Logger.hpp"
-#include <boost/asio.hpp>
-#include <chrono>
+#include <boost/log/core/record.hpp>
+#include <boost/log/sources/record_ostream.hpp>
+#include <boost/preprocessor/seq/enum.hpp>
+#include <boost/preprocessor/seq/size.hpp>
 #include <functional>
-#include <iostream>
 #include <mutex>
+#include <stddef.h>
 #include <string>
-#include <thread>
-#include <type_traits>
+#include <unordered_map>
 #include <vector>
 
 namespace boostander {
@@ -21,9 +22,6 @@ namespace boostander {
 namespace net {
 
 template <typename sessType, typename callbacksType> class SessionManagerBase {
-  // static_assert(!std::is_base_of<sessType, SessionI>::value, "sessType must inherit from
-  // SessionI");
-
 public:
   SessionManagerBase() {}
 
@@ -89,7 +87,6 @@ bool SessionManagerBase<sessType, callbacksType>::removeSessById(const std::stri
   {
     std::scoped_lock lock(sessionsMutex_);
     if (!sessions_.erase(sessionID)) {
-      // throw std::runtime_error(
       LOG(WARNING) << "unregisterSession: trying to unregister non-existing session";
       // NOTE: continue cleanup with saved shared_ptr
       return false;
@@ -129,7 +126,7 @@ bool SessionManagerBase<sessType, callbacksType>::addSession(const std::string& 
     std::scoped_lock lock(sessionsMutex_);
     sessions_[sessionID] = sess;
   }
-  return true; // TODO: handle collision
+  return true;
 }
 
 /**

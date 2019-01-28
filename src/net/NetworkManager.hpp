@@ -1,8 +1,6 @@
 ﻿#pragma once
 
-#include <boost/asio.hpp>
-#include <thread>
-#include <vector>
+#include <memory>
 
 namespace boostander {
 namespace config {
@@ -22,7 +20,7 @@ class WSServer;
 
 class NetworkManager {
 public:
-  NetworkManager(const boostander::config::ServerConfig& serverConfig);
+  NetworkManager();
 
   void handleIncomingMessages();
 
@@ -34,9 +32,6 @@ public:
 
 private:
   std::shared_ptr<WSServer> wsServer_;
-
-  // TODO
-  //  std::vector<Player> players_;
 };
 
 } // namespace net

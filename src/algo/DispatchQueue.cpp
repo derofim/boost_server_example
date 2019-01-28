@@ -8,8 +8,6 @@ namespace algo {
 
 DispatchQueue::DispatchQueue(const std::string& name, const size_t thread_cnt)
     : name_(name), threads_(thread_cnt) {
-  LOG(INFO) << "Creating dispatch queue: " << name.c_str();
-  LOG(INFO) << "Dispatch threads: " << thread_cnt;
 
   // NOTE: threads_.size() may be 0 -> use parent thread
   for (size_t i = 0; i < threads_.size(); i++) {
@@ -18,7 +16,6 @@ DispatchQueue::DispatchQueue(const std::string& name, const size_t thread_cnt)
 }
 
 DispatchQueue::~DispatchQueue() {
-  LOG(INFO) << "Destructor: Destroying dispatch threads...";
 
   // Signal to dispatch threads that it's time to wrap up
   std::unique_lock<std::mutex> lock(lock_);
@@ -76,7 +73,6 @@ void DispatchQueue::dispatch_loop(void) {
       // unlock now that we're done messing with the queue
       lock.unlock();
 
-      LOG(INFO) << "DispatchQueue dispatch_thread_handler for " << name_;
       dispatchCallback();
 
       lock.lock();
@@ -104,7 +100,6 @@ void DispatchQueue::DispatchQueued(void) {
       // unlock now that we're done messing with the queue
       lock.unlock();
 
-      LOG(INFO) << "DispatchQueue dispatch_thread_handler for " << name_;
       dispatchCallback();
 
       lock.lock();

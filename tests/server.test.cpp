@@ -30,18 +30,6 @@
 
 #include "testsCommon.h"
 
-/*// supported formatting: https://howardhinnant.github.io/date/date.html#to_stream_formatting
-template <typename T, typename R>
-static std::chrono::duration<T, R>
-dateTimeFromStr(const std::string& format = "%d.%m.%Y %H:%M:%S") {
-  std::tm tm = {};
-  std::stringstream ss("Jan 9 2014 12:35:34");
-  ss >> std::get_time(&tm, "%b %d %Y %H:%M:%S");
-  auto tp = std::chrono::system_clock::from_time_t(std::mktime(&tm));
-  // std::chrono::duration<T, R> duration;
-  return std::chrono::duration_cast<std::chrono::duration<T, R>>(tp);
-}*/
-
 SCENARIO("loadCSV", "[CSV]") {
   using boostander::algo::CSV;
   CSV csv;
@@ -95,8 +83,6 @@ SCENARIO("chrono", "[stringUtils]") {
   using namespace boostander::algo;
 
   CHECK(dateToStr(dateTimeFromStr("20.10.1995 22:15:14")) == "20.10.1995 22:15:14");
-
-  // CHECK(currentDateTime() == "20.10.1995 22:15:14");
 
   {
     auto start_time = dateTimeFromStr("20.10.1995 22:15:14");
@@ -161,5 +147,5 @@ SCENARIO("randomCSV", "[CSV]") {
 
   // may be used to generate test .csv files
   // format: test_data_28.01.2019 01:21:58
-  csv.saveToFile("test_data_" + currentDateTime("%d_%m_%Y") + ".csv");
+  // csv.saveToFile("test_data_" + currentDateTime("%d_%m_%Y") + ".csv");
 }

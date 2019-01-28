@@ -61,7 +61,10 @@ namespace log {
 Logger::Logger() {
   boost::shared_ptr<logging::core> core = logging::core::get();
 
-  // Create a backend
+  /*The syslog API (and protocol) doesn't allow applications to specify the way how logs are
+   * processed by the log server. For that you have to configure your syslog server. See the
+   * documentation for your server (e.g. rsyslog, syslog-ng or journald for logging through the
+   * syslog API).*/
   boost::shared_ptr<sinks::syslog_backend> backend(new sinks::syslog_backend(
       keywords::facility = sinks::syslog::local7, /*< the logging facility >*/
       keywords::use_impl = sinks::syslog::native  /*< the native syslog API should be used >*/
@@ -75,16 +78,6 @@ Logger::Logger() {
   // Wrap it into the frontend and register in the core.
   // The backend requires synchronization in the frontend.
   core->add_sink(logfile);
-
-  /*The syslog API (and protocol) doesn't allow applications to specify the way how logs are
-   * processed by the log server. For that you have to configure your syslog server. See the
-   * documentation for your server (e.g. rsyslog, syslog-ng or journald for logging through the
-   * syslog API).*/
-  /*const std::string logFileName = "app.log";
-  logfile->locked_backend()->set_local_address(
-      logFileName); // add_stream(boost::make_shared<std::ofstream>(logFileName));*/
-  // logfile->locked_backend()->set_local_address("0.0.0.0:514");
-  // logfile->locked_backend()->set_target_address("0.0.0.0:514");
 
   logfile->set_formatter(expr::stream
 

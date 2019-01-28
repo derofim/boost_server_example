@@ -3,23 +3,12 @@
 #include <boost/asio.hpp>
 #include <cstdint>
 #include <filesystem>
-#include <string>
-
-namespace sol {
-class state;
-} // namespace sol
 
 namespace boostander {
 namespace config {
 
-const std::string ASSETS_DIR = "assets";
-const std::string CONFIGS_DIR = "configuration_files";
-const std::string CONFIG_NAME = "server_conf.txt"; // TODO
-
 struct ServerConfig {
   ServerConfig(const std::filesystem::path& workdir);
-
-  ServerConfig(const std::filesystem::path& configPath, const std::filesystem::path& workdir);
 
   void print() const;
 

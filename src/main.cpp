@@ -8,15 +8,14 @@
 #include "config/ServerConfig.hpp"
 #include "log/Logger.hpp"
 #include "net/NetworkManager.hpp"
-#include "net/websockets/WsServer.hpp"
-#include "net/websockets/WsSession.hpp"
 #include "storage/path.hpp"
+#include <boost/log/core/record.hpp>
+#include <boost/log/sources/record_ostream.hpp>
+#include <boost/preprocessor/seq/enum.hpp>
+#include <boost/preprocessor/seq/size.hpp>
 #include <chrono>
 #include <cstdlib>
 #include <filesystem>
-#include <functional>
-#include <iostream>
-#include <string>
 #include <thread>
 #include <vector>
 
@@ -44,31 +43,16 @@ int main() {
 
   const fs::path workdir = boostander::storage::getThisBinaryDirectoryPath();
 
-  // TODO: support async file read, use futures or std::async
-  // NOTE: future/promise Should Not Be Coupled to std::thread Execution Agents
-  const boostander::config::ServerConfig serverConfig(
-      fs::path{workdir / boostander::config::ASSETS_DIR / boostander::config::CONFIGS_DIR /
-               boostander::config::CONFIG_NAME},
-      workdir);
+  const boostander::config::ServerConfig serverConfig(workdir);
 
-  auto nm = std::make_shared<boostander::net::NetworkManager>(serverConfig);
-
-  // TODO: print active sessions
-
-  // TODO: destroy inactive wrtc sessions (by timer)
+  auto nm = std::make_shared<boostander::net::NetworkManager>();
 
   nm->run(serverConfig);
-
-  LOG(INFO) << "Starting server loop for event queue";
 
   // process recieved messages with some period
   TickManager<std::chrono::milliseconds> tm(50ms);
 
   tm.addTickHandler(TickHandler("handleAllPlayerMessages", [&nm]() {
-    // TODO: merge responses for same Player (NOTE: packet size limited!)
-
-    // TODO: move game logic to separete thread or service
-
     // Handle queued incoming messages
     nm->handleIncomingMessages();
   }));
@@ -76,8 +60,6 @@ int main() {
   while (tm.needServerRun()) {
     tm.tick();
   }
-
-  // TODO: sendProcessedMsgs in separate thread
 
   // (If we get here, it means we got a SIGINT or SIGTERM)
   LOG(WARNING) << "If we get here, it means we got a SIGINT or SIGTERM";

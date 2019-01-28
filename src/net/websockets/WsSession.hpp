@@ -3,6 +3,7 @@
 #include "net/SessionBase.hpp"
 #include <boost/asio.hpp>
 #include <boost/beast/core.hpp>
+#include <boost/beast/http.hpp>
 #include <boost/beast/websocket.hpp>
 #include <cstddef>
 #include <string>
@@ -35,8 +36,6 @@ enum class PING_STATE : uint32_t { ALIVE, SENDING, SENT, TOTAL };
 // Echoes back all received WebSocket messages
 class WsSession : public SessionBase, public std::enable_shared_from_this<WsSession> {
 public:
-  // WsSession() {} // TODO
-
   // Take ownership of the socket
   explicit WsSession(boost::asio::ip::tcp::socket socket, NetworkManager* nm,
                      const std::string& id);
@@ -78,8 +77,7 @@ public:
 
   bool fullyCreated() const { return isFullyCreated_; }
 
-  void connectAsClient(const std::string& host, const std::string& port,
-                       tcp::endpoint::protocol_type protocol_type);
+  void connectAsClient(const std::string& host, const std::string& port);
 
   void onResolve(beast::error_code ec, tcp::resolver::results_type results);
 
