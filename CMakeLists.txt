@@ -41,7 +41,9 @@ target_include_directories( ${PROJECT_NAME}_lib PUBLIC "src/" )
 target_include_directories( ${PROJECT_NAME}_lib SYSTEM PUBLIC
   ${THIRDPARTY_FILES} ) # from ProjectFiles.cmake
 
-set(BOOST_DEFINITIONS "-DBOOST_LOG_DYN_LINK" CACHE INTERNAL "" FORCE)
+# https://www.boost.org/doc/libs/1_60_0/libs/log/doc/html/log/installation/config.html
+set(BOOST_DEFINITIONS "-DBOOST_LOG_DYN_LINK -DBOOST_LOG_USE_NATIVE_SYSLOG" CACHE INTERNAL "" FORCE)
+
 target_compile_definitions( ${PROJECT_NAME}_lib PUBLIC
   ${BOOST_DEFINITIONS} )
 

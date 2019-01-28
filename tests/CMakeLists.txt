@@ -72,6 +72,15 @@ macro(tests_add_executable target source_list)
 
   target_link_libraries(${target} PRIVATE test_main)
 
+  target_link_libraries(${target} PRIVATE
+    # 3dparty libs
+    ${USED_3DPARTY_LIBS}
+    # system libs
+    ${USED_SYSTEM_LIBS}
+    # main project lib
+    ${ROOT_PROJECT_NAME}_lib
+  )
+
   set_test_compile_options( ${target} )
 
   add_test(

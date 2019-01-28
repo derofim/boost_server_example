@@ -4,6 +4,8 @@
  * See accompanying file LICENSE.md or copy at http://opensource.org/licenses/MIT
  */
 
+#include "algo/CSV.hpp"
+#include "algo/StringUtils.hpp"
 #include "algo/TickManager.hpp"
 #include "config/ServerConfig.hpp"
 #include "log/Logger.hpp"
@@ -34,16 +36,51 @@ static void printNumOfCores() {
   }
 }
 
-int main() {
-  LOG(INFO) << "Starting client..";
-
+int main(int argc, char** argv) {
   using namespace boostander::algo;
   using namespace boostander::net;
+  using namespace boostander::storage;
+
+  std::locale::global(std::locale::classic()); // https://stackoverflow.com/a/18981514/10904212
+
+  boostander::log::Logger::instance(); // inits Logger
+
+  LOG(INFO) << "Starting client..";
+
+  // Check command line arguments.
+  if (argc < 2) {
+    LOG(WARNING) << "Got argc = " << std::to_string(argc) << " \n"
+                 << "Got argv[1] = " << (argc > 1 ? argv[1] : "NULL") << " \n"
+                 << "Usage: websocket-client-async <csvFilePath>\n"
+                 << "Example:\n"
+                 << "    boostander_client data/test_data_28.01.2019.csv\n";
+    return EXIT_FAILURE;
+  }
+
+  auto const csvFilePath = argv[1];
+
+  std::filesystem::path path(csvFilePath); // Construct the path from a string.
+  if (path.is_relative()) {
+    LOG(INFO) << "Detected relative filepath..";
+    const fs::path workdir = boostander::storage::getThisBinaryDirectoryPath();
+    path = std::filesystem::path(workdir / csvFilePath);
+    LOG(INFO) << "New filepath = " << path.c_str();
+  }
+
+  const std::string csvContents = getFileContents(path);
+
+  // check csv format
+  {
+    CSV csv;
+    csv.loadFromMemory(csvContents);
+    if (csv.getRowsCount() <= 0 || csv.getColsCount() <= 0) {
+      LOG(WARNING) << "Provided invalid csv file\n"
+                   << "See example .csv files in assets folder\n";
+    }
+  }
 
   size_t WSTickFreq = 100; // 1/Freq
   size_t WSTickNum = 0;
-
-  boostander::log::Logger::instance(); // inits Logger
 
   printNumOfCores();
 
@@ -92,6 +129,8 @@ int main() {
   newWsSession->connectAsClient(hostToConnect, portToConnect,
                                 tcp::endpoint::protocol_type::tcp::v6());
 
+  // NOTE: need wait connected state
+  LOG(WARNING) << "connecting to " << hostToConnect << ":" << portToConnect << "...";
   bool isConnected = newWsSession->waitForConnect(/* maxWait_ms */ 1000);
   if (!isConnected) {
     LOG(WARNING) << "waitForConnect: Can`t connect to " << hostToConnect << ":" << portToConnect;
@@ -99,12 +138,12 @@ int main() {
     LOG(WARNING) << "exiting...";
     return EXIT_SUCCESS;
   }
+
   newWsSession->runAsClient();
 
-  std::string welcomeMsg = "welcome, ";
-  welcomeMsg += newSessId;
-  LOG(INFO) << "1111new ws session " << newSessId;
-  newWsSession->send(std::make_shared<std::string>(welcomeMsg)); // NOTE: need wait connected state
+  // const std::string msg = static_cast<char>(WS_OPCODE::CSV_ANALIZE) + csvContents;
+  const std::string msg = Opcodes::opcodeToStr(WS_OPCODE::CSV_ANALIZE) + csvContents;
+  newWsSession->send(std::make_shared<std::string>(msg));
 
   tm.addTickHandler(TickHandler("handleAllPlayerMessages", [&nm, &newSessId, &newWsSession]() {
     // TODO: merge responses for same Player (NOTE: packet size limited!)
@@ -113,53 +152,10 @@ int main() {
 
     // Handle queued incoming messages
     nm->handleIncomingMessages();
-    std::string periodicMsg = "0welcome, ";
+    /*std::string periodicMsg = "0welcome, ";
     periodicMsg += newSessId;
-    newWsSession->send(std::make_shared<std::string>(periodicMsg));
+    newWsSession->send(std::make_shared<std::string>(periodicMsg));*/
   }));
-
-  {
-    tm.addTickHandler(TickHandler("WSTick", [&nm, &WSTickFreq, &WSTickNum]() {
-      WSTickNum++;
-      if (WSTickNum < WSTickFreq) {
-        return;
-      } else {
-        WSTickNum = 0;
-      }
-      LOG(WARNING) << "WSTick! " << nm->getWS()->getSessionsCount();
-      // send test data to all players
-      std::chrono::system_clock::time_point nowTp = std::chrono::system_clock::now();
-      std::time_t t = std::chrono::system_clock::to_time_t(nowTp);
-      std::string msg = "WS server_time: ";
-      msg += std::ctime(&t);
-      msg += ";Total WS connections:";
-      msg += std::to_string(nm->getWS()->getSessionsCount());
-      const std::unordered_map<std::string, std::shared_ptr<boostander::net::WsSession>>& sessions =
-          nm->getWS()->getSessions();
-      msg += ";SESSIONS:[";
-      for (auto& it : sessions) {
-        std::shared_ptr<boostander::net::WsSession> wss = it.second;
-        msg += it.first;
-        msg += "=";
-        if (!wss || !wss.get()) {
-          msg += "EMPTY";
-        } else {
-          msg += wss->getId();
-        }
-      }
-      msg += "]SESSIONS";
-
-      /*nm->getWS()->sendToAll(msg);
-      nm->getWS()->doToAllSessions(
-          [&](const std::string& sessId, std::shared_ptr<boostander::net::WsSession> session) {
-            if (!session || !session.get()) {
-              LOG(WARNING) << "WSTick: Invalid WsSession ";
-              return;
-            }
-            session->send("Your WS id: " + session->getId());
-          });*/
-    }));
-  }
 
   while (tm.needServerRun()) {
     tm.tick();

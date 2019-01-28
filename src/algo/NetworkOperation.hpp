@@ -6,7 +6,7 @@
 namespace boostander {
 namespace algo {
 
-enum class WS_OPCODE_ENUM : uint32_t { PING = 48, TOTAL };
+enum class WS_OPCODE_ENUM : uint32_t { PING = 48, CSV_ANALIZE = 49, CSV_ANSWER = 50, TOTAL };
 
 class Opcodes {
 public:

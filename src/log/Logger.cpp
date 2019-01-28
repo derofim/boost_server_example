@@ -1,25 +1,39 @@
 #include "log/Logger.hpp" // IWYU pragma: associated
 #include "config/ServerConfig.hpp"
 #include "storage/path.hpp"
+#include <exception>
 #include <filesystem>
 #include <iostream>
 #include <memory>
+#include <string>
+
+#if !defined(BOOST_WINDOWS)
+#define BOOST_LOG_USE_NATIVE_SYSLOG
+#endif
 
 // IWYU pragma: begin_exports
 #include <boost/bind.hpp>
+#include <boost/config.hpp>
 #include <boost/core/null_deleter.hpp>
 #include <boost/log/attributes.hpp>
+#include <boost/log/attributes/scoped_attribute.hpp>
 #include <boost/log/common.hpp>
 #include <boost/log/core.hpp>
 #include <boost/log/core/record.hpp>
 #include <boost/log/expressions.hpp>
 #include <boost/log/expressions/formatters/date_time.hpp>
 #include <boost/log/sinks.hpp>
+#include <boost/log/sinks/sync_frontend.hpp>
+#include <boost/log/sinks/syslog_backend.hpp>
 #include <boost/log/sinks/text_ostream_backend.hpp>
 #include <boost/log/sources/logger.hpp>
 #include <boost/log/sources/record_ostream.hpp>
 #include <boost/log/sources/severity_channel_logger.hpp>
+#include <boost/log/sources/severity_logger.hpp>
 #include <boost/log/support/date_time.hpp>
+#include <boost/log/utility/ipc/object_name.hpp>
+#include <boost/log/utility/ipc/reliable_message_queue.hpp>
+#include <boost/log/utility/open_mode.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/log/utility/setup/file.hpp>
 #include <boost/make_shared.hpp>
@@ -28,6 +42,8 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/ref.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/smart_ptr/make_shared_object.hpp>
+#include <boost/smart_ptr/shared_ptr.hpp>
 // IWYU pragma: end_exports
 
 namespace fs = std::filesystem;
@@ -43,10 +59,32 @@ namespace boostander {
 namespace log {
 
 Logger::Logger() {
-  logfile = boost::make_shared<text_sink>();
+  boost::shared_ptr<logging::core> core = logging::core::get();
 
-  const std::string logFileName = "app.log";
-  logfile->locked_backend()->add_stream(boost::make_shared<std::ofstream>(logFileName));
+  // Create a backend
+  boost::shared_ptr<sinks::syslog_backend> backend(new sinks::syslog_backend(
+      keywords::facility = sinks::syslog::local7, /*< the logging facility >*/
+      keywords::use_impl = sinks::syslog::native  /*< the native syslog API should be used >*/
+      ));
+
+  // Set the straightforward level translator for the "Severity" attribute of type int
+  backend->set_severity_mapper(sinks::syslog::direct_severity_mapping<int>("Severity"));
+
+  logfile = boost::make_shared<sink_t>(backend);
+
+  // Wrap it into the frontend and register in the core.
+  // The backend requires synchronization in the frontend.
+  core->add_sink(logfile);
+
+  /*The syslog API (and protocol) doesn't allow applications to specify the way how logs are
+   * processed by the log server. For that you have to configure your syslog server. See the
+   * documentation for your server (e.g. rsyslog, syslog-ng or journald for logging through the
+   * syslog API).*/
+  /*const std::string logFileName = "app.log";
+  logfile->locked_backend()->set_local_address(
+      logFileName); // add_stream(boost::make_shared<std::ofstream>(logFileName));*/
+  // logfile->locked_backend()->set_local_address("0.0.0.0:514");
+  // logfile->locked_backend()->set_target_address("0.0.0.0:514");
 
   logfile->set_formatter(expr::stream
 
@@ -60,7 +98,7 @@ Logger::Logger() {
                          << "] : " << expr::smessage);
 
   // Register the logfile in the logging core
-  logging::core::get()->add_sink(logfile);
+  core->add_sink(logfile);
 
   outputstream = boost::make_shared<ostream_sink>();
   boost::shared_ptr<std::ostream> clog{&std::clog, boost::null_deleter{}};
@@ -78,7 +116,7 @@ Logger::Logger() {
                               << logging::trivial::severity << "] : " << expr::smessage);
 
   // Register the ostream in the logging core
-  logging::core::get()->add_sink(outputstream);
+  core->add_sink(outputstream);
 
   // Add TimeStamp, LineID to log records
   logging::add_common_attributes();
@@ -93,7 +131,7 @@ Logger::~Logger() {
 
   // Break the feeding loop
   outputstream->stop();
-  logfile->stop();
+  // logfile->stop();
 
   // Flush all log records that may have left buffered
   outputstream->flush();

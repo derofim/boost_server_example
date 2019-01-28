@@ -3,6 +3,15 @@
 #include <boost/uuid/random_generator.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_io.hpp>
+#include <filesystem>
+#include <fstream>
+#include <functional>
+#include <iomanip>
+#include <iostream>
+#include <sstream>
+#include <streambuf>
+#include <string>
+#include <vector>
 
 namespace boostander {
 namespace algo {
@@ -24,6 +33,26 @@ boost::uuids::uuid genBoostGuid() {
 }
 
 std::string genGuid() { return boost::lexical_cast<std::string>(genBoostGuid()); }
+
+std::string currentDateTime(const std::string& format) {
+  auto now = std::chrono::system_clock::now();
+  return dateToStr(now);
+}
+
+std::chrono::system_clock::time_point dateTimeFromStr(const std::string& date,
+                                                      const std::string& format) {
+  std::tm tm = {};
+  std::stringstream ss(date);
+  ss >> std::get_time(&tm, format.c_str());
+  return std::chrono::system_clock::from_time_t(std::mktime(&tm));
+}
+
+std::string dateToStr(const std::chrono::system_clock::time_point& tp, const std::string& format) {
+  std::stringstream ss;
+  auto in_time_t = std::chrono::system_clock::to_time_t(tp);
+  ss << std::put_time(std::localtime(&in_time_t), format.c_str());
+  return ss.str();
+}
 
 } // namespace algo
 } // namespace boostander

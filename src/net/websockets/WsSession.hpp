@@ -98,8 +98,8 @@ private:
    * 16 Kbyte for the highest throughput, while also being the most portable one
    * @see https://viblast.com/blog/2015/2/5/webrtc-data-channel-message-size/
    **/
-  static constexpr size_t maxReceiveMsgSizebyte = 16 * 1024;
-  static constexpr size_t maxSendMsgSizebyte = 16 * 1024;
+  static constexpr size_t maxReceiveMsgSizebyte = 1024 * 1024 * 1024;
+  static constexpr size_t maxSendMsgSizebyte = 1024 * 1024 * 1024;
 
   /**
    * The websocket::stream class template provides asynchronous and blocking message-oriented

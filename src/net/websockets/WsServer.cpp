@@ -1,6 +1,8 @@
 #include "net/websockets/WsServer.hpp" // IWYU pragma: associated
+#include "algo/CSV.hpp"
 #include "algo/DispatchQueue.hpp"
 #include "algo/NetworkOperation.hpp"
+#include "algo/StringUtils.hpp"
 #include "config/ServerConfig.hpp"
 #include "log/Logger.hpp"
 #include "net/websockets/WsListener.hpp"
@@ -10,14 +12,23 @@
 #include <boost/asio/ssl/context.hpp>
 #include <boost/beast/http.hpp>
 #include <boost/beast/websocket.hpp>
+#include <boost/format.hpp>
+#include <boost/lexical_cast.hpp>
 #include <cstddef>
+#include <filesystem>
+#include <fstream>
+#include <functional>
+#include <iomanip>
 #include <iostream>
 #include <memory>
+#include <sstream>
+#include <streambuf>
 #include <string>
 #include <thread>
 #include <type_traits>
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 namespace beast = boost::beast;         // from <boost/beast.hpp>
 namespace http = beast::http;           // from <boost/beast/http.hpp>
@@ -44,14 +55,95 @@ static void pingCallback(WsSession* clientSession, NetworkManager* nm,
     return;
   }
 
-  const std::string payload = messageBuffer->substr(1, messageBuffer->size() - 1);
-  const std::string pingResponse = Opcodes::opcodeToStr(WS_OPCODE::PING) + payload;
+  /*const std::string payload = messageBuffer->substr(1, messageBuffer->size() - 1);
+  const std::string pingResponse = Opcodes::opcodeToStr(WS_OPCODE::PING) + payload;*/
 
   // const std::string incomingStr = beast::buffers_to_string(messageBuffer->data());
   LOG(INFO) << std::this_thread::get_id() << ":"
-            << "pingCallback incomingMsg=" << messageBuffer->c_str();
+            << "pingCallback incomingMsg=" << messageBuffer->substr(0, 50).c_str();
 
   // send same message back (ping-pong)
+  clientSession->send(messageBuffer);
+}
+
+static void csvAnalizeCallback(WsSession* clientSession, NetworkManager* nm,
+                               std::shared_ptr<std::string> messageBuffer) {
+  using boostander::algo::Opcodes;
+  using boostander::algo::WS_OPCODE;
+
+  using namespace boostander::algo;
+  using namespace boostander::net;
+
+  if (!messageBuffer || !messageBuffer.get()) {
+    LOG(WARNING) << "WsServer: Invalid messageBuffer";
+    return;
+  }
+
+  if (!clientSession) {
+    LOG(WARNING) << "WSServer invalid clientSession!";
+    return;
+  }
+
+  const std::string payload = messageBuffer->substr(1, messageBuffer->size() - 1);
+
+  LOG(INFO) << std::this_thread::get_id() << ":"
+            << "testCSVCallback incomingMsg=" << messageBuffer->substr(0, 50).c_str();
+
+  CSV csv;
+  std::chrono::system_clock::time_point maxDate;
+  double delim = 0.0;
+  {
+    csv.loadFromMemory(payload);
+    if (csv.getRowsCount() <= 0 || csv.getColsCount() <= 0) {
+      LOG(WARNING) << "csvAnalizeCallback: Provided invalid csv file\n"
+                   << "See example .csv files in assets folder\n";
+    }
+    for (int i = 0; i < csv.getRowsCount(); i++) {
+      auto dt = dateTimeFromStr(csv.getAt(i, 0));
+      if (dt > maxDate) {
+        maxDate = dt;
+        auto d1 = boost::lexical_cast<double>(csv.getAt(i, 1));
+        auto d2 = boost::lexical_cast<double>(csv.getAt(i, 2));
+        if (!std::isinf(d2) && d2 != 0) {
+          delim = d1 / d2;
+        }
+      }
+    }
+  }
+
+  LOG(WARNING) << "csvAnalizeCallback: maxDate = " << dateToStr(maxDate) << " delim = " << delim;
+
+  // send analize result
+  const std::string CSVResponse =
+      Opcodes::opcodeToStr(WS_OPCODE::CSV_ANSWER) + std::to_string(csv.getRowsCount());
+  clientSession->send(CSVResponse);
+}
+
+static void csvAnswerCallback(WsSession* clientSession, NetworkManager* nm,
+                              std::shared_ptr<std::string> messageBuffer) {
+  using boostander::algo::Opcodes;
+  using boostander::algo::WS_OPCODE;
+
+  if (!messageBuffer || !messageBuffer.get()) {
+    LOG(WARNING) << "WsServer: Invalid messageBuffer";
+    return;
+  }
+
+  if (!clientSession) {
+    LOG(WARNING) << "WSServer invalid clientSession!";
+    return;
+  }
+
+  const std::string payload = messageBuffer->substr(1, messageBuffer->size() - 1);
+  LOG(WARNING) << "csvAnswerCallback: " << payload;
+
+  // const std::string CSVResponse = Opcodes::opcodeToStr(WS_OPCODE::CSV_ANSWER) + payload;
+
+  // const std::string incomingStr = beast::buffers_to_string(messageBuffer->data());
+  /*LOG(INFO) << std::this_thread::get_id() << ":"
+            << "testCSVCallback incomingMsg=" << messageBuffer->substr(0, 50).c_str();*/
+
+  // send same message back
   // clientSession->send(messageBuffer);
 }
 
@@ -77,9 +169,24 @@ void WSInputCallbacks::addCallback(const WsNetworkOperation& op,
 
 WSServer::WSServer(NetworkManager* nm, const boostander::config::ServerConfig& serverConfig)
     : nm_(nm), ioc_(serverConfig.threads_) {
-  const WsNetworkOperation PING_OPERATION =
-      WsNetworkOperation(algo::WS_OPCODE::PING, algo::Opcodes::opcodeToStr(algo::WS_OPCODE::PING));
-  operationCallbacks_.addCallback(PING_OPERATION, &pingCallback);
+
+  {
+    const WsNetworkOperation op = WsNetworkOperation(
+        algo::WS_OPCODE::PING, algo::Opcodes::opcodeToStr(algo::WS_OPCODE::PING));
+    operationCallbacks_.addCallback(op, &pingCallback);
+  }
+
+  {
+    const WsNetworkOperation op = WsNetworkOperation(
+        algo::WS_OPCODE::CSV_ANALIZE, algo::Opcodes::opcodeToStr(algo::WS_OPCODE::CSV_ANALIZE));
+    operationCallbacks_.addCallback(op, &csvAnalizeCallback);
+  }
+
+  {
+    const WsNetworkOperation op = WsNetworkOperation(
+        algo::WS_OPCODE::CSV_ANSWER, algo::Opcodes::opcodeToStr(algo::WS_OPCODE::CSV_ANSWER));
+    operationCallbacks_.addCallback(op, &csvAnswerCallback);
+  }
 }
 
 /**
@@ -141,7 +248,7 @@ void WSServer::sendTo(const std::string& sessionID, const std::string& message) 
 }
 
 void WSServer::handleIncomingMessages() {
-  LOG(INFO) << "WSServer::handleIncomingMessages getSessionsCount " << getSessionsCount();
+  // LOG(INFO) << "WSServer::handleIncomingMessages getSessionsCount " << getSessionsCount();
   doToAllSessions([&](const std::string& sessId, std::shared_ptr<WsSession> session) {
     if (!session || !session.get()) {
       LOG(WARNING) << "WsServer::handleAllPlayerMessages: trying to "

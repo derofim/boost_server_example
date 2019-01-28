@@ -63,11 +63,17 @@ wget https://dl.bintray.com/boostorg/release/1.69.0/source/boost_1_69_0.tar.bz2 
     && tar -xjf boost_1_69_0.tar.bz2 \
     && rm -rf boost_1_69_0.tar.bz2 \
     && cd boost_1_69_0 \
+    && printf "\n#define BOOST_LOG_USE_NATIVE_SYSLOG" >> boost/config/user.hpp \
     && sudo ./bootstrap.sh --prefix=/usr/ \
     && sudo ./b2 link=shared install
 
 cat /usr/include/boost/version.hpp
 ```
+
+NOTE: Compile with BOOST_LOG_USE_NATIVE_SYSLOG!
+NOTE: However, it may be more convenient to define configuration macros in the "boost/config/user.hpp" file in order to automatically define them both for the library and user's projects. https://www.boost.org/doc/libs/1_59_0/doc/html/boost_typeindex/config.html
+
+For syslog install syslog-ng: https://brezular.com/2017/01/21/syslog-ng-configuration-for-newbies/
 
 ### include-what-you-use
 
@@ -100,9 +106,23 @@ OR
 
 bash scripts/release_project.sh
 
+## protocol "file"
+
+sudo cat /var/log/syslog
+
+For syslog install syslog-ng: https://brezular.com/2017/01/21/syslog-ng-configuration-for-newbies/
+
+sudo useradd -d /home/ubuntu -s /bin/bash -m ubuntu
+
+Use 0.0.0.0:514
+
 ## RUN main project (from root project dir)
 
-./build/bin/boostander
+./build/bin/Debug/boostander/boostander
+
+## RUN client (from root project dir)
+
+./build/bin/Debug/client/boostander_client data/test_data_28.01.2019.csv
 
 # Code coverage
 

@@ -17,9 +17,11 @@
 namespace boostander {
 namespace log {
 
-typedef boost::log::sinks::asynchronous_sink<boost::log::sinks::text_ostream_backend> text_sink;
+// typedef boost::log::sinks::asynchronous_sink<boost::log::sinks::text_ostream_backend> text_sink;
 
 typedef boost::log::sinks::asynchronous_sink<boost::log::sinks::text_ostream_backend> ostream_sink;
+
+typedef boost::log::sinks::synchronous_sink<boost::log::sinks::syslog_backend> sink_t;
 
 class Logger {
 public:
@@ -35,7 +37,7 @@ private:
   boost::log::sources::severity_logger<boost::log::trivial::severity_level> severityLogger;
 
   boost::shared_ptr<ostream_sink> outputstream;
-  boost::shared_ptr<text_sink> logfile;
+  boost::shared_ptr<sink_t> logfile;
 };
 
 } // namespace log

@@ -34,14 +34,11 @@ static void printNumOfCores() {
 }
 
 int main() {
-  LOG(INFO) << "Starting server..";
-
   using namespace boostander::algo;
 
-  size_t WSTickFreq = 100; // 1/Freq
-  size_t WSTickNum = 0;
-
   boostander::log::Logger::instance(); // inits Logger
+
+  LOG(INFO) << "Starting server..";
 
   printNumOfCores();
 
@@ -75,49 +72,6 @@ int main() {
     // Handle queued incoming messages
     nm->handleIncomingMessages();
   }));
-
-  {
-    tm.addTickHandler(TickHandler("WSTick", [&nm, &WSTickFreq, &WSTickNum]() {
-      WSTickNum++;
-      if (WSTickNum < WSTickFreq) {
-        return;
-      } else {
-        WSTickNum = 0;
-      }
-      LOG(WARNING) << "WSTick! " << nm->getWS()->getSessionsCount();
-      // send test data to all players
-      std::chrono::system_clock::time_point nowTp = std::chrono::system_clock::now();
-      std::time_t t = std::chrono::system_clock::to_time_t(nowTp);
-      std::string msg = "WS server_time: ";
-      msg += std::ctime(&t);
-      msg += ";Total WS connections:";
-      msg += std::to_string(nm->getWS()->getSessionsCount());
-      const std::unordered_map<std::string, std::shared_ptr<boostander::net::WsSession>>& sessions =
-          nm->getWS()->getSessions();
-      msg += ";SESSIONS:[";
-      for (auto& it : sessions) {
-        std::shared_ptr<boostander::net::WsSession> wss = it.second;
-        msg += it.first;
-        msg += "=";
-        if (!wss || !wss.get()) {
-          msg += "EMPTY";
-        } else {
-          msg += wss->getId();
-        }
-      }
-      msg += "]SESSIONS";
-
-      nm->getWS()->sendToAll(msg);
-      nm->getWS()->doToAllSessions(
-          [&](const std::string& sessId, std::shared_ptr<boostander::net::WsSession> session) {
-            if (!session || !session.get()) {
-              LOG(WARNING) << "WSTick: Invalid WsSession ";
-              return;
-            }
-            session->send("Your WS id: " + session->getId());
-          });
-    }));
-  }
 
   while (tm.needServerRun()) {
     tm.tick();

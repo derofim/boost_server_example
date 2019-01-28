@@ -426,7 +426,7 @@ bool WsSession::handleIncomingData(std::shared_ptr<std::string> message) {
   const auto& callbacks = nm_->getWS()->getOperationCallbacks().getCallbacks();
 
   const WsNetworkOperation wsNetworkOperation =
-      static_cast<algo::WS_OPCODE>(algo::Opcodes::wsOpcodeFromStr(typeStr));
+      static_cast<algo::WS_OPCODE>(algo::Opcodes::wsOpcodeFromStr(message->c_str()));
   const auto itFound = callbacks.find(wsNetworkOperation);
   // if a callback is registered for event, add it to queue
   if (itFound != callbacks.end()) {
@@ -441,8 +441,8 @@ bool WsSession::handleIncomingData(std::shared_ptr<std::string> message) {
     /*LOG(WARNING) << "WsSession::handleIncomingData: receivedMessagesQueue_->sizeGuess() "
                  << receivedMessagesQueue_->sizeGuess();*/
   } else {
-    LOG(WARNING) << "WsSession::handleIncomingData: ignored invalid message " << message->c_str()
-                 << " with type " << typeStr;
+    LOG(WARNING) << "WsSession::handleIncomingData: ignored invalid message "
+                 << message->substr(0, 50).c_str() << "... with type " << typeStr;
     return false;
   }
 
